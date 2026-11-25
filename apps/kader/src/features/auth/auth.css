@@ -1,0 +1,121 @@
+/* Fitur: Login */
+
+.login-btn:hover {
+  background: #174e57;
+}
+
+.login-page {
+  min-height: 100vh;
+  background: linear-gradient(#0c282633,#0c282633),url('/assets/posyandu-bg.png') center/cover;
+  display: grid;
+  place-items: center;
+  padding: 31.2px;
+}
+
+.login-glass {
+  width: min(605.8px,100%);
+  padding: 39px 39px 37.7px;
+  border: 1px solid #8bc3c8;
+  border-radius: 26px;
+  background: #d9e2e1a8;
+  backdrop-filter: blur(20.8px);
+  box-shadow: 0 15.6px 45.5px #102e3030;
+  color: white;
+}
+
+.login-logo {
+  display: block;
+  width: 179.4px;
+  height: 135.2px;
+  object-fit: contain;
+  margin: 0 auto 19.5px;
+}
+
+.login-glass h2 {
+  font-size: 23.4px;
+  margin: 0 0 15.6px;
+}
+
+.login-glass>p {
+  font-size: 14.3px;
+  margin: 0 0 39px;
+  color: #fff;
+}
+
+.login-glass form label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #253238;
+  margin: 0 0 7.8px;
+}
+
+.login-glass form label b {
+  color: #d32e39;
+}
+
+.field {
+  height: 49.4px;
+  background: white;
+  border-radius: 9.1px;
+  display: flex;
+  align-items: center;
+  gap: 10.4px;
+  padding: 0 14.3px;
+  margin-bottom: 22.1px;
+  color: #77868a;
+}
+
+.field svg {
+  width: 19.5px;
+}
+
+.field input {
+  border: 0;
+  outline: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 14.3px;
+  color: #283a3e;
+}
+
+.field input::placeholder {
+  color: #a2a9aa;
+}
+
+.field .eye {
+  background: transparent;
+  color: #6d7b7d;
+  padding: 3px;
+}
+
+.lock {
+  font-size: 20.8px;
+}
+
+.login-glass form small {
+  display: block;
+  font-size: 11.7px;
+  color: #f1f1f1;
+  margin-top: -12px;
+}
+
+.login-btn {
+  margin-top: 39px;
+  height: 50.7px;
+  width: 100%;
+  background: #003c45;
+  color: white;
+  border-radius: 9.1px;
+  font-size: 14.3px;
+}
+
+.login-glass .field:nth-of-type(2) {
+  margin-bottom: 19.5px;
+}
+
+@media(max-width:620px) {
+  .login-glass {
+    padding: 32.5px 26px;
+  }
+}

@@ -1,0 +1,206 @@
+/* Reset, variabel dasar, dan tombol umum */
+
+:root {
+  font-family: Inter,Arial,sans-serif;
+  color: #172a35;
+  background: #a8d7d9;
+  font-synthesis: none;
+  font-size: 16.9px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 416px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: 0;
+}
+
+/* ---------- Tombol ---------- */
+
+.primary {
+  background: #34707a;
+  color: #fff;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 2px 6px #285f6530;
+}
+
+.primary:hover {
+  background: #174e57;
+}
+
+.primary.small,
+.ghost.small {
+  padding: 9px 16px;
+  font-size: 12.5px;
+}
+
+.ghost {
+  background: #123e45;
+  border: 1px solid #2a5a61;
+  color: #d8efee;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ghost:hover {
+  background: #194a52;
+}
+
+.btn-dark {
+  background: #082c33;
+  color: #fff;
+  border-radius: 8px;
+  padding: 11px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.btn-dark:hover {
+  background: #0d4049;
+}
+
+.btn-sand {
+  background: #ebe6da;
+  color: #3c4f55;
+  border-radius: 8px;
+  padding: 11px 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.btn-sand:hover {
+  background: #e0dacb;
+}
+
+.btn-text {
+  background: transparent;
+  color: #4a5f66;
+  padding: 11px 16px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.btn-text:hover {
+  color: #082c33;
+}
+
+.outline-btn {
+  border: 1px solid #dce5e9;
+  border-radius: 8px;
+  background: white;
+  color: #425b70;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.outline-btn:hover {
+  border-color: #468b92;
+  background: #f0f3f6;
+  color: #27646c;
+}
+
+.icon-btn {
+  background: transparent;
+  color: #57747a;
+  padding: 6px;
+  border-radius: 7px;
+  display: inline-grid;
+  place-items: center;
+}
+
+.icon-btn:hover {
+  background: #eef3f3;
+}
+
+/* ---------- Pill / badge ---------- */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pill.dot::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.green-pill {
+  background: #dff5ea;
+  color: #1f9a6f;
+}
+
+.yellow-pill {
+  background: #fdf0c8;
+  color: #b7791f;
+}
+
+.orange-pill {
+  background: #ffedd2;
+  color: #c2620a;
+}
+
+.red-pill {
+  background: #fde3e6;
+  color: #c9283a;
+}
+
+.teal-pill {
+  background: #c7eef0;
+  color: #0e7280;
+}
+
+.blue-pill {
+  background: #e0ecff;
+  color: #2f6fd0;
+}
+
+.pink-pill {
+  background: #fde4ee;
+  color: #d03a7a;
+}
+
+.gray-pill {
+  background: #ebe8df;
+  color: #6d7a7e;
+}

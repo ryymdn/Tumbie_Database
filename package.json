@@ -1,0 +1,15 @@
+{
+  "name": "tumbie",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:ortu": "npm run dev -w @tumbie/ortu",
+    "dev:kader": "npm run dev -w @tumbie/kader",
+    "build:ortu": "npm run build -w @tumbie/ortu",
+    "build:kader": "npm run build -w @tumbie/kader",
+    "build": "npm run build --workspaces"
+  }
+}

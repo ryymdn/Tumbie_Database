@@ -1,0 +1,461 @@
+/* Portal orang tua — mengikuti sistem visual aplikasi Tumbie Kader. */
+
+.parent-app-shell {
+  --parent-sidebar-width: 250px;
+  display: block;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  overflow-x: hidden;
+  background: #a9d8d9;
+  color: #16303a;
+  font-family: 'Plus Jakarta Sans', Inter, Arial, sans-serif;
+}
+
+/* Sidebar dipisahkan dari alur dokumen agar selalu menempel pada viewport. */
+.parent-app-shell > .parent-sidebar {
+  width: var(--parent-sidebar-width);
+  min-width: var(--parent-sidebar-width);
+  height: 100vh;
+  min-height: 100vh;
+  padding: 22px 18px 24px;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #052a31;
+  z-index: 30;
+}
+
+.parent-app-shell .side-logo {
+  width: 150px;
+  height: 110px;
+  object-fit: contain;
+  align-self: center;
+  margin: 0 auto 30px;
+}
+
+.parent-app-shell .parent-sidebar nav {
+  display: grid;
+  gap: 16px;
+}
+
+.parent-app-shell .nav-item {
+  width: 100%;
+  height: 42px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: transparent;
+  color: #eaf3f3;
+  text-align: left;
+  font-family: Inter, Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.parent-app-shell .nav-item svg {
+  flex: 0 0 auto;
+}
+
+.parent-app-shell .nav-item:hover {
+  background: #0a3a43;
+}
+
+.parent-app-shell .nav-item.active {
+  border-color: #6bbcc4;
+  background: #06323a;
+}
+
+.parent-app-shell .logout {
+  width: 100%;
+  min-height: 44px;
+  margin-top: auto;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #c0171c;
+  color: white;
+  font-family: Inter, Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.parent-app-shell .logout:hover {
+  background: #a51217;
+}
+
+/* Area utama mulai setelah lebar sidebar; tidak ada konten di belakang sidebar. */
+.parent-app-shell > .parent-main {
+  display: flex;
+  flex: 0 0 calc(100% - var(--parent-sidebar-width));
+  flex-direction: column;
+  width: calc(100% - var(--parent-sidebar-width));
+  min-width: 0;
+  min-height: 100vh;
+  margin: 0 0 0 var(--parent-sidebar-width);
+  padding: 0;
+  position: relative;
+  left: auto;
+  top: auto;
+}
+
+.parent-app-shell .parent-topbar {
+  flex: 0 0 72px;
+  width: 100%;
+  height: 72px;
+  min-height: 72px;
+  margin: 0;
+  position: static;
+  box-sizing: border-box;
+  padding: 0 36px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: #fcf8ee;
+}
+
+.parent-app-shell .top-user {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+}
+
+.parent-app-shell .top-user b,
+.parent-app-shell .top-user small {
+  display: block;
+}
+
+.parent-app-shell .top-user b {
+  color: #1a2f38;
+  font-weight: 700;
+  text-align: right;
+}
+
+.parent-app-shell .top-user small {
+  margin-top: 2px;
+  color: #71848a;
+  font-size: 11px;
+  text-align: right;
+}
+
+.parent-app-shell .avatar-user {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #2f6b74;
+  color: white;
+}
+
+.parent-app-shell .avatar-user em {
+  position: absolute;
+  right: -3px;
+  bottom: -2px;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid #fcf8ee;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #b9ecee;
+  color: #05434c;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.parent-app-shell .hamb {
+  display: none;
+  padding: 5px;
+  background: transparent;
+  color: #335b61;
+}
+
+.parent-app-shell .parent-page-content {
+  flex: 1 0 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: calc(100vh - 72px);
+  margin: 0;
+  box-sizing: border-box;
+  padding: 26px 30px 36px;
+  background: #a9d8d9;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+
+.parent-app-shell .nav-item { text-decoration: none; }
+.parent-app-shell .nav-item.active { border-color: #7cc7cf; background: #06323a; }
+
+/* ---------- Komponen bersama ---------- */
+
+.parent-page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap:22px;
+  margin:0 0 27px;
+}
+
+.parent-page-heading h1,
+.parent-welcome-copy h1 {
+  margin: 0;
+  color: #0e3b45;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+.parent-page-heading p {
+  margin:7px 0 0;
+  color: #5f8d93;
+  font-size: 13px;
+}
+
+.page-heading-actions {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap:14px;
+}
+
+.parent-action,
+.parent-app-shell .primary {
+  padding:14px 24px;
+  border-radius:11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap:11px;
+  background: #3b6f75;
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: 0 3px 6px #1f4f5640;
+}
+
+.parent-action:hover,
+.parent-app-shell .primary:hover { background: #174e57; }
+
+.child-picker-label {
+  min-width:230px;
+  display: grid;
+  gap:5px;
+  color: #7aa4a9;
+  font-size: 12px;
+}
+
+.child-picker-label select {
+  width: 100%;
+  height:43px;
+  padding:0 14px;
+  border: 0;
+  border-radius:8px;
+  outline: 0;
+  background: #fff;
+  color: #355c68;
+  font-size: 13px;
+}
+
+.select-wrap {
+  position: relative;
+  display: block;
+}
+
+.select-wrap select {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right:38px;
+}
+
+.select-wrap svg {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #5b6f75;
+}
+
+.parent-panel {
+  min-width: 0;
+  margin-bottom:22px;
+  padding:27px 30px;
+  border-radius:19px;
+  background: #fff;
+}
+
+.sand-card {
+  min-width: 0;
+  padding:27px 30px;
+  border-radius:14px;
+  background: #efede7;
+}
+
+.sand-card-head {
+  margin-bottom:19px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap:14px;
+}
+
+.sand-card h2 {
+  margin: 0;
+  color: #3e747b;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.outline-btn {
+  padding:7px 19px;
+  border: 1px solid #2f6b74;
+  border-radius:7px;
+  background: #fff;
+  color: #2f6b74;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.outline-btn:hover { background: #e6f3f3; }
+
+.detail-grid {
+  padding-top:19px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap:19px 32px;
+}
+
+.detail-grid > div { min-width: 0; display: grid; gap:7px; }
+.detail-grid span { color: #98a8ab; font-size: 12px; }
+.detail-grid strong { color: #27535c; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.detail-full { grid-column: 1 / -1; }
+
+.verified-pill {
+  width: fit-content;
+  padding:3px 16px;
+  border-radius:1349px;
+  display: inline-block;
+  background: #4e7a4c;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.verified-pill.pending { background: #c58b2b; }
+.verified-pill.small { padding:2px 11px; font-size: 11px; }
+
+.nutrition-pill {
+  padding:3px 12px;
+  border-radius:1349px;
+  display: inline-block;
+  background: #def5e9;
+  color: #20835d;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.nutrition-pill.cyan { background: #9be5ee; color: #1b5a64; }
+.nutrition-pill.green { background: #c8f0cf; color: #1f7a45; }
+
+.child-avatar {
+  width:54px;
+  height:54px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  background: #b8e0e2;
+  color: #315b68;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.child-avatar.large { width:86px; height:86px; font-size: 22px; }
+
+.text-action {
+  padding:7px 16px;
+  border-radius:1349px;
+  display: inline-flex;
+  align-items: center;
+  gap:3px;
+  background: #2f6370;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.text-action:hover { background: #174e57; }
+
+.next-schedule-note {
+  margin:38px 0 0;
+  color: #2f565e;
+  font-size: 12px;
+}
+
+.parent-table-wrap { width: 100%; overflow-x: auto; }
+
+/* Tombol umum halaman */
+.btn-light,
+.btn-dark,
+.btn-sand {
+  padding:11px 22px;
+  border-radius:8px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap:7px;
+}
+
+.btn-light { background: #fff; color: #2c5b64; }
+.btn-light:hover { background: #eaf6f6; }
+.btn-dark { background: #1f5a64; color: #fff; }
+.btn-dark:hover { background: #114650; }
+.btn-sand { background: #efede7; color: #2c5b64; }
+.btn-light.small, .btn-dark.small { padding:8px 16px; font-size: 11.5px; }
+
+/* ---------- Responsif shell ---------- */
+@media (max-width: 1100px) {
+  .parent-app-shell { --parent-sidebar-width: 220px; }
+  .parent-app-shell .nav-item { font-size: 14px; }
+  .parent-app-shell .parent-page-content { padding:30px 27px 40px; }
+}
+
+@media (max-width: 620px) {
+  .parent-app-shell { --parent-sidebar-width: 234px; }
+  .parent-app-shell > .parent-sidebar {
+    left: -260px; width:316px; min-width:316px; transition: left .2s ease; box-shadow: 6px 0 26px #0002;
+  }
+  .parent-app-shell > .parent-sidebar.open { left: 0; }
+  .parent-app-shell > .parent-main { width: 100%; flex: 0 0 100%; margin-left: 0; }
+  .sidebar-backdrop { position: fixed; inset: 0; z-index: 19; display: block; background: #102a2c70; }
+  .parent-app-shell .hamb { display: inline-grid; place-items: center; }
+  .parent-app-shell .parent-topbar { height:94px; padding:0 19px; }
+  .parent-app-shell .parent-page-content { min-height:calc(100vh - 94px); padding:27px 19px 35px; }
+  .parent-page-heading { flex-direction: column; }
+  .page-heading-actions, .child-picker-label { width: 100%; }
+  .parent-page-heading h1, .parent-welcome-copy h1 { font-size: 24px; }
+}

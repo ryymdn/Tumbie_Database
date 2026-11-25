@@ -1,0 +1,363 @@
+/* Fitur: Autentikasi Orang Tua (registrasi, masuk, lupa kata sandi) */
+
+.auth-page {
+  --auth-teal: #2f6b72;
+  --auth-dark: #003c45;
+  --auth-sand: #f3efe6;
+  --auth-ink: #17313b;
+
+  font-family: 'Plus Jakarta Sans',Inter,Arial,sans-serif;
+  color: var(--auth-ink);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 32px clamp(24px,8vw,140px);
+  /* Letakkan foto desain di public/assets/posyandu-orangtua-bg.jpg.
+     Jika belum ada, layer kedua (foto yang sudah ada) dipakai. */
+  background:
+    linear-gradient(#0c28262e,#0c28262e),
+    url('/assets/background-ortu.jpg') center/cover no-repeat,
+    url('/assets/background-ortu.jpg') center/cover no-repeat;
+}
+
+.auth-card {
+  width: min(500px,100%);
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px 34px 26px;
+  box-shadow: 0 18px 50px #10262833;
+}
+
+.auth-logo {
+  display: block;
+  width: 118px;
+  height: 84px;
+  object-fit: contain;
+  margin: 0 auto 18px;
+}
+
+.auth-title {
+  font-size: 21px;
+  font-weight: 800;
+  color: #17414a;
+  margin: 0 0 6px;
+}
+
+.auth-sub {
+  font-size: 12px;
+  color: #6a7d85;
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+
+/* ---------- Form ---------- */
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+}
+
+.auth-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.auth-field.full {
+  grid-column: 1/-1;
+}
+
+.auth-field>label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #2b3f49;
+}
+
+.auth-field>label b {
+  color: #d1323d;
+  font-weight: 700;
+}
+
+.auth-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 11px;
+  background: var(--auth-sand);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #6b7f86;
+}
+
+.auth-input.multi {
+  align-items: flex-start;
+  padding-top: 10px;
+  padding-bottom: 8px;
+}
+
+.auth-input.multi svg {
+  margin-top: 2px;
+}
+
+.auth-input:focus-within {
+  background: #fff;
+  border-color: #65aab0;
+  box-shadow: 0 0 0 3px #65aab030;
+}
+
+.auth-input.outlined {
+  background: #fff;
+  border-color: #dfe5e6;
+  min-height: 40px;
+}
+
+.auth-input.invalid {
+  border-color: #e5384b;
+}
+
+.auth-input svg {
+  flex-shrink: 0;
+}
+
+.auth-input input,
+.auth-input textarea {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 12px;
+  color: #22373f;
+  padding: 0;
+}
+
+.auth-input textarea {
+  resize: none;
+  line-height: 1.5;
+}
+
+.auth-input input::placeholder,
+.auth-input textarea::placeholder {
+  color: #96a3a8;
+}
+
+.auth-eye {
+  background: transparent;
+  color: #6b7f86;
+  display: grid;
+  place-items: center;
+  padding: 2px;
+}
+
+.auth-eye:hover {
+  color: var(--auth-ink);
+}
+
+.auth-error {
+  font-size: 10.5px;
+  color: #c9283a;
+  font-weight: 500;
+}
+
+.auth-hint {
+  display: block;
+  font-size: 10px;
+  color: #7c8d93;
+  margin-top: 5px;
+}
+
+.auth-notice {
+  background: #e3f6ee;
+  color: #15805a;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 10px 12px;
+  margin: 0 0 14px;
+}
+
+.auth-link {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1d6fb8;
+  text-decoration: none;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
+}
+
+.auth-link.right {
+  justify-self: end;
+  margin-top: -4px;
+}
+
+/* ---------- Kotak persetujuan ---------- */
+
+.auth-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--auth-sand);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 12px 12px;
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: #44565d;
+  cursor: pointer;
+}
+
+.auth-check.invalid {
+  border-color: #e5384b;
+}
+
+.auth-check strong {
+  color: #1c4650;
+}
+
+.auth-check input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.auth-check i {
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+  flex-shrink: 0;
+  border: 1.5px solid #7a8d93;
+  border-radius: 3px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+}
+
+.auth-check input:checked + i {
+  background: var(--auth-teal);
+  border-color: var(--auth-teal);
+}
+
+.auth-check input:checked + i::after {
+  content: '';
+  width: 3.5px;
+  height: 7px;
+  border: solid #fff;
+  border-width: 0 1.6px 1.6px 0;
+  transform: rotate(45deg) translate(-.5px,-.5px);
+}
+
+.auth-check input:focus-visible + i {
+  outline: 2px solid #65aab0;
+  outline-offset: 2px;
+}
+
+/* ---------- Tombol ---------- */
+
+.auth-submit {
+  height: 42px;
+  width: 100%;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.auth-submit.teal {
+  background: var(--auth-teal);
+}
+
+.auth-submit.teal:hover {
+  background: #245860;
+}
+
+.auth-submit.dark {
+  background: var(--auth-dark);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.auth-submit.dark:hover {
+  background: #0b505b;
+}
+
+.auth-otp-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin: -4px 0 -4px;
+}
+
+.auth-otp-row .auth-hint {
+  margin: 0;
+  margin-right: auto;
+}
+
+.auth-otp-btn {
+  background: var(--auth-teal);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+}
+
+.auth-otp-btn:hover:not(:disabled) {
+  background: #245860;
+}
+
+.auth-otp-btn:disabled {
+  background: #9db9bd;
+  cursor: default;
+}
+
+.auth-foot {
+  text-align: center;
+  font-size: 11.5px;
+  color: #51646b;
+  margin: 16px 0 0;
+}
+
+.auth-foot a {
+  color: #1c5963;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-foot a:hover {
+  text-decoration: underline;
+}
+
+@media(max-width:900px) {
+  .auth-page {
+    justify-content: center;
+    padding: 24px 16px;
+  }
+}
+
+@media(max-width:520px) {
+  .auth-card {
+    padding: 22px 18px;
+  }
+
+  .auth-grid {
+    grid-template-columns: 1fr;
+  }
+}

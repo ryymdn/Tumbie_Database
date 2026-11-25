@@ -1,0 +1,16 @@
+/* @import eksternal harus berada paling atas */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* Gaya global */
+@import './base.css';
+@import './layout.css';
+@import './components.css';
+
+/* Gaya per fitur (CSS tiap fitur berada di folder fiturnya) */
+@import '../features/auth/auth.css';
+@import '../features/dashboard/dashboard.css';
+@import '../features/patients/patients.css';
+@import '../features/examinations/examinations.css';
+@import '../features/schedule/schedule.css';
+@import '../features/reports/reports.css';
+@import '../features/profile/profile.css';
