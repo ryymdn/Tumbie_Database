@@ -1,7 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronDown, Clock3, Info, MapPin } from 'lucide-react';
 import { PageHeading } from '../../components/parent/Widgets.jsx';
-import { REGION_SCHEDULES } from '../../data/parentData.js';
+import { apiRequest } from '../auth/authApi.js';
+import { STORAGE_KEY } from '../auth/useAuth.js';
+import { useParent } from '../../context/ParentContext.jsx';
+
+const monthFormatter = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' });
+const dateFormatter = new Intl.DateTimeFormat('id-ID', { dateStyle: 'full' });
+
+function localDate(iso) {
+  return new Date(iso + 'T12:00:00');
+}
 
 const PREP_STEPS = [
   ['1. Bawa Buku KIA', 'Wajib dibawa agar data perkembangan si kecil tercatat dengan akurat.'],
@@ -10,12 +19,12 @@ const PREP_STEPS = [
   ['4. Datang Tepat Waktu', 'Hadirlah sesuai jam pendaftaran guna menghindari antrean padat.'],
 ];
 
-function SelectBox({ label, value }) {
+function SelectBox({ label, value, options, onChange }) {
   return (
     <label className="sched-select">
       <span>{label}</span>
       <span className="select-wrap">
-        <select defaultValue={value}><option>{value}</option></select>
+        <select value={value} onChange={(event) => onChange(event.target.value)}>{options.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}</select>
         <ChevronDown size={13} />
       </span>
     </label>
@@ -23,36 +32,97 @@ function SelectBox({ label, value }) {
 }
 
 export default function SchedulePage() {
-  const [chosen, setChosen] = useState(null);
+  const [joining, setJoining] = useState(false);
+  const [data, setData] = useState({ locations: [], schedules: [] });
+  const [message, setMessage] = useState('Memuat jadwal…');
+  const [location, setLocation] = useState('');
+  const [month, setMonth] = useState('');
+  const { selectedChild } = useParent();
+  const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
+
+  useEffect(() => {
+    let active = true;
+    apiRequest('schedules', { token: sessionStorage.getItem(STORAGE_KEY) })
+      .then((result) => {
+        if (!active) return;
+        setData(result);
+        setMessage('');
+      })
+      .catch((error) => { if (active) setMessage(error.message); });
+    return () => { active = false; };
+  }, []);
+
+  const defaultLocation = data.locations.find((item) => item.name === selectedChild?.posyandu) ?? data.locations[0];
+  const locationId = location || defaultLocation?.id || '';
+  const future = data.schedules.filter((item) => item.posyanduId === locationId && item.date >= today);
+  const months = [...new Set(future.map((item) => item.date.slice(0, 7)))];
+  const sessions = future.filter((item) => !month || item.date.startsWith(month)).map((item, index) => {
+    const date = localDate(item.date);
+    return {
+      ...item,
+      main: index === 0,
+      day: item.date.slice(8, 10),
+      weekday: date.toLocaleDateString('id-ID', { weekday: 'short' }),
+      month: date.toLocaleDateString('id-ID', { month: 'short' }),
+      time: item.start + ' – ' + item.end + ' WIB',
+      badge: item.status === 'ongoing' ? 'Sedang Berlangsung' : 'Terjadwal',
+      badgeTone: index === 0 ? 'green' : '',
+    };
+  });
+  const next = sessions[0];
+  const join = async (session) => {
+    if (joining || !selectedChild?.verified || session.posyandu !== selectedChild.posyandu) return;
+    setJoining(true);
+    try {
+      const token = sessionStorage.getItem(STORAGE_KEY);
+      const { queueCount } = await apiRequest('schedules/' + session.id + '/queue/' + selectedChild.id, { token, body: {} });
+      setData((current) => ({
+        ...current,
+        schedules: current.schedules.map((item) => item.id === session.id ? {
+          ...item,
+          queueCount,
+          registeredChildIds: [...new Set([...item.registeredChildIds, selectedChild.id])],
+        } : item),
+      }));
+    } catch (error) {
+      window.alert(error.message);
+    } finally {
+      setJoining(false);
+    }
+  };
 
   return (
     <>
       <PageHeading title="Jadwal Posyandu" description="Informasi agenda penimbangan, imunisasi rutin, dan lokasi Posyandu terdekat.">
-        <SelectBox label="Pilih Posyandu / Wilayah" value="Posyandu Melati (RW 02)" />
-        <SelectBox label="Bulan Pelaksanaan" value="Desember 2026" />
+        <SelectBox label="Pilih Posyandu / Wilayah" value={locationId}
+          options={data.locations.length ? data.locations.map((item) => ({ ...item, name: item.rw ? item.name + ' (RW ' + item.rw + ')' : item.name })) : [{ id: '', name: 'Belum ada wilayah' }]}
+          onChange={(id) => { setLocation(id); setMonth(''); }} />
+        <SelectBox label="Bulan Pelaksanaan" value={month}
+          options={[{ id: '', name: 'Semua bulan' }, ...months.map((id) => ({ id, name: monthFormatter.format(localDate(id + '-01')) }))]}
+          onChange={setMonth} />
       </PageHeading>
 
       <section className="next-session-panel">
         <span className="section-eyebrow"><i />Jadwal Si Kecil Berikutnya</span>
-        <h2>Senin, 01 Desember 2026</h2>
+        <h2>{next ? dateFormatter.format(localDate(next.date)) : message || "Belum ada jadwal mendatang"}</h2>
         <div className="session-meta">
-          <span><Clock3 size={13} /> 08.00 - 11.30 WIB</span>
-          <span><MapPin size={13} /> Balai Warga RW 02, Posyandu Melati</span>
+          <span><Clock3 size={13} /> {next?.time ?? "—"}</span>
+          <span><MapPin size={13} /> {next?.place ?? "—"}</span>
         </div>
         <div className="service-block">
           <small>Rangkaian Layanan:</small>
           <div className="service-tags">
-            <span>Penimbangan BB/TB/LK</span><span>Imunisasi Lanjutan</span><span>Konsultasi Gizi</span><span className="green">PMT Balita</span>
+            {next?.services.length ? next.services.map((service) => <span key={service}>{service}</span>) : <span>—</span>}
           </div>
         </div>
-        <p>Petugas Bertugas: <strong>Bidan Dian Sastro</strong></p>
+        <p>Petugas Bertugas: <strong>{next?.midwife ?? "—"}</strong></p>
       </section>
 
       <section className="region-panel">
         <h2>Daftar Jadwal Posyandu Wilayah</h2>
         <p className="region-sub">Pilih sesi penimbangan alternatif jika Anda berhalangan hadir pada tanggal utama.</p>
         <div className="region-list">
-          {REGION_SCHEDULES.map((s) => (
+          {sessions.map((s) => (
             <article key={s.id} className={`region-item ${s.main ? 'main' : ''}`}>
               <div className="region-date">
                 <small>{s.month}</small><strong>{s.day}</strong><small>{s.weekday}</small>
@@ -66,16 +136,14 @@ export default function SchedulePage() {
                 <div className="region-meta">
                   <span><Clock3 size={10} /> {s.time}</span>
                   <span><MapPin size={10} /> {s.place}</span>
-                  <span className="quota">• Kuota: {s.quota}</span>
+                  <span className="quota">• Kuota: {s.quota ?? "—"}</span>
                 </div>
               </div>
-              {s.main ? (
-                <span className="region-btn filled">Sesi Utama</span>
-              ) : (
-                <button type="button" className={`region-btn ${chosen === s.id ? 'picked' : ''}`} onClick={() => setChosen(chosen === s.id ? null : s.id)}>
-                  {chosen === s.id ? 'Sesi Dipilih' : 'Daftar Sesi Alternatif'}
-                </button>
-              )}
+              <button type="button" className={`region-btn ${s.main ? 'filled' : ''} ${s.registeredChildIds.includes(selectedChild?.id) ? 'picked' : ''}`}
+                disabled={joining || !selectedChild?.verified || selectedChild.posyandu !== s.posyandu || s.registeredChildIds.includes(selectedChild.id)}
+                onClick={() => join(s)}>
+                {s.registeredChildIds.includes(selectedChild?.id) ? 'Sudah Terdaftar' : s.main ? 'Daftar Sesi Utama' : 'Daftar Sesi Alternatif'}
+              </button>
             </article>
           ))}
         </div>

@@ -1,15 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, ChevronDown, ClipboardList, HeartPulse, Ruler, Save } from 'lucide-react';
 import { useParent } from '../../context/ParentContext.jsx';
 import { PATHS } from '../../data/routes.js';
-import { BLOOD_TYPES, POSYANDU_OPTIONS } from '../../data/parentData.js';
+import { BLOOD_TYPES } from '../../data/parentData.js';
 import { formatAge, initialsOf } from '../../data/format.js';
 
 const EMPTY = {
   name: '', birthDate: '', gender: 'Laki-laki',
   birthWeight: '', birthLength: '', headCircumference: '',
-  posyandu: POSYANDU_OPTIONS[0], bloodType: BLOOD_TYPES[0], note: '',
+  posyandu: '', bloodType: BLOOD_TYPES[0], note: '',
 };
 
 function validate(f) {
@@ -47,16 +47,48 @@ export default function AddChildPage() {
   const { kids, addChild } = useParent();
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
+  const [pending, setPending] = useState(false);
+  const [posyandu, setPosyandu] = useState([]);
+  const [posyanduStatus, setPosyanduStatus] = useState('Memuat daftar Posyandu…');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const api = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/+$/, '');
+    fetch(`${api}/posyandu`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error();
+        const { data } = await response.json();
+        setPosyandu(data);
+        setPosyanduStatus(data.length ? '' : 'Belum ada Posyandu aktif.');
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setPosyanduStatus('Daftar Posyandu gagal dimuat. Periksa backend, lalu muat ulang halaman.');
+        }
+      });
+    return () => controller.abort();
+  }, []);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (pending) return;
     const found = validate(form);
+    if (!form.posyandu) found.posyandu = 'Pilih Posyandu terlebih dahulu.';
     setErrors(found);
     if (Object.keys(found).length) return;
-    addChild(form);
-    navigate(PATHS.children);
+    const selected = posyandu.find((item) => item.id === form.posyandu);
+    if (!selected) return;
+    setPending(true);
+    try {
+      await addChild(form);
+      navigate(PATHS.children);
+    } catch (error) {
+      setErrors({ submit: error.message });
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -131,10 +163,13 @@ export default function AddChildPage() {
 
         <Card icon={HeartPulse} title="Posyandu & Catatan Kesehatan">
           <div className="form-grid two">
-            <Field label="Posyandu Wilayah" required>
+            <Field label="Posyandu Wilayah" required error={errors.posyandu}>
               <span className="select-wrap">
-                <select value={form.posyandu} onChange={set('posyandu')}>
-                  {POSYANDU_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+                <select value={form.posyandu} onChange={set('posyandu')} disabled={!posyandu.length} aria-invalid={Boolean(errors.posyandu)}>
+                  <option value="">{posyanduStatus || 'Pilih Posyandu'}</option>
+                  {posyandu.map(({ id, name, rw }) => (
+                    <option key={id} value={id}>{rw ? `${name} (RW ${rw})` : name}</option>
+                  ))}
                 </select>
                 <ChevronDown size={14} />
               </span>
@@ -155,7 +190,10 @@ export default function AddChildPage() {
 
         <div className="form-actions">
           <button type="button" className="btn-cancel" onClick={() => navigate(PATHS.children)}>Batal</button>
-          <button type="submit" className="btn-save"><Save size={13} />Simpan Data Anak</button>
+          {errors.submit && <p className="form-error" role="alert">{errors.submit}</p>}
+          <button type="submit" className="btn-save" disabled={pending || !posyandu.length}>
+            <Save size={13} />{pending ? 'Menyimpan…' : 'Simpan Data Anak'}
+          </button>
         </div>
       </form>
     </div>

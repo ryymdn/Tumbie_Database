@@ -18,23 +18,23 @@ import { PATHS } from './data/routes.js';
 
 // Semua halaman portal hanya bisa dibuka setelah login.
 // Setelah tombol Keluar ditekan, pengguna diarahkan ke landing page (bukan halaman masuk).
-function ProtectedArea({ isLoggedIn, identity, onLogout, leavingRef }) {
+function ProtectedArea({ isLoggedIn, user, onLogout, leavingRef }) {
   if (!isLoggedIn) return <Navigate to={leavingRef.current ? PATHS.landing : PATHS.login} replace />;
   return (
-    <ParentProvider onLogout={onLogout} identity={identity}>
+    <ParentProvider onLogout={onLogout} user={user}>
       <Outlet />
     </ParentProvider>
   );
 }
 
 export default function App() {
-  const { identity, isLoggedIn, login, logout } = useAuth();
+  const { user, isLoggedIn, checking, login, logout } = useAuth();
   const navigate = useNavigate();
   const leavingRef = useRef(false);
 
-  const handleLogin = useCallback((value) => {
+  const handleLogin = useCallback((token, user) => {
     leavingRef.current = false;
-    login(value);
+    login(token, user);
   }, [login]);
 
   const handleLogout = useCallback(() => {
@@ -42,6 +42,8 @@ export default function App() {
     logout();
     navigate(PATHS.landing, { replace: true });
   }, [logout, navigate]);
+
+  if (checking) return <p role="status">Memeriksa sesi...</p>;
 
   return (
     <Routes>
@@ -54,7 +56,7 @@ export default function App() {
       <Route path={PATHS.register} element={<RegisterPage />} />
       <Route path={PATHS.forgot} element={<ForgotPasswordPage />} />
 
-      <Route element={<ProtectedArea isLoggedIn={isLoggedIn} identity={identity} onLogout={handleLogout} leavingRef={leavingRef} />}>
+      <Route element={<ProtectedArea isLoggedIn={isLoggedIn} user={user} onLogout={handleLogout} leavingRef={leavingRef} />}>
         <Route element={<ParentLayout />}>
           <Route path={PATHS.home} element={<HomePage />} />
           <Route path={PATHS.children} element={<ChildrenPage />} />

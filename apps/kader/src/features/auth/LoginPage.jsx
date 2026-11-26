@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Eye, UserRound } from 'lucide-react';
+import { authRequest } from './authApi.js';
 import { MIN_PASSWORD } from './data.js';
 
 export default function LoginPage({ onLogin }) {
@@ -7,9 +8,28 @@ export default function LoginPage({ onLogin }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e) => {
+  const [error, setError] = useState('');
+  const [pending, setPending] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onLogin(username);
+    if (pending) return;
+    setError('');
+    setPending(true);
+    try {
+      const { token, user } = await authRequest('login', {
+        body: { identity: username.trim(), password },
+      });
+      if (user.role !== 'kader') {
+        setError('Gunakan akun kader untuk masuk.');
+        return;
+      }
+      onLogin(token, user);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -48,7 +68,10 @@ export default function LoginPage({ onLogin }) {
           </div>
           <small>Min. {MIN_PASSWORD} Karakter</small>
 
-          <button className="login-btn">Masuk</button>
+          {error && <p role="alert">{error}</p>}
+          <button className="login-btn" type="submit" disabled={pending}>
+            {pending ? 'Memeriksa…' : 'Masuk'}
+          </button>
         </form>
       </div>
     </div>

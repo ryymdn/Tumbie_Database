@@ -1,20 +1,39 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { authRequest } from './authApi.js';
 
-const STORAGE_KEY = 'tumbieParent';
+export const STORAGE_KEY = 'tumbieParentToken';
 
-// Sesi login orang tua (disimpan di sessionStorage).
 export function useAuth() {
-  const [identity, setIdentity] = useState(() => sessionStorage.getItem(STORAGE_KEY));
+  const [user, setUser] = useState(null);
+  const [checking, setChecking] = useState(() => Boolean(sessionStorage.getItem(STORAGE_KEY)));
 
-  const login = useCallback((value) => {
-    sessionStorage.setItem(STORAGE_KEY, value);
-    setIdentity(value);
+  useEffect(() => {
+    const token = sessionStorage.getItem(STORAGE_KEY);
+    if (!token) return;
+
+    let active = true;
+    authRequest('me', { token }).then(({ user }) => {
+      if (!active) return;
+      if (user.role !== 'orang_tua') throw new Error('Peran akun tidak sesuai.');
+      setUser(user);
+    }).catch(() => {
+      if (active) sessionStorage.removeItem(STORAGE_KEY);
+    }).finally(() => {
+      if (active) setChecking(false);
+    });
+
+    return () => { active = false; };
+  }, []);
+
+  const login = useCallback((token, user) => {
+    sessionStorage.setItem(STORAGE_KEY, token);
+    setUser(user);
   }, []);
 
   const logout = useCallback(() => {
     sessionStorage.removeItem(STORAGE_KEY);
-    setIdentity(null);
+    setUser(null);
   }, []);
 
-  return { identity, isLoggedIn: Boolean(identity), login, logout };
+  return { user, isLoggedIn: Boolean(user), checking, login, logout };
 }

@@ -367,11 +367,10 @@
   gap: 26px;
 }
 
-.fld.plain input,
-.fld.plain select {
-  background: transparent;
-  border: 0;
-  border-bottom: 0;
+.session-form .fld.plain input,
+.session-form .fld.plain select {
+  background: #f5f1e8;
+  border: 1px solid #d6cfc0;
   height: 30px;
   padding: 0 0 0 8px;
   font-size: 13px;
@@ -380,9 +379,10 @@
   box-shadow: none;
 }
 
-.fld.plain input:focus {
-  background: #f5f1e8;
-  box-shadow: none;
+.session-form .fld.plain input:focus,
+.session-form .fld.plain select:focus {
+  border-color: #65aab0;
+  box-shadow: 0 0 0 3px #65aab030;
 }
 
 .session-form .fld>span {

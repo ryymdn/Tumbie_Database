@@ -65,14 +65,14 @@ export const SERVICE_OPTIONS = ['Antropometri', 'Vaksin Wajib', 'Vitamin A & PMT
 export const KADER_POOL = ['Kader Sari', 'Kader Dewi', 'Kader Lina', 'Kader Maya'];
 
 export const initialSessionForm = {
-  name: 'Posyandu Kamboja RT 02',
-  date: '2026-12-28',
-  time: '08.00 - 11.00 WIB',
-  place: 'Balai Pos RT 02 RW 05',
-  services: ['Antropometri', 'Vaksin Wajib', 'Vitamin A & PMT'],
-  quota: '40',
-  bidan: 'Bidan Dian Sastro, S.Tr.Keb',
-  kaders: ['Kader Aminah', 'Kader Farida', 'Kader Retno'],
+  name: '',
+  date: '',
+  time: '',
+  place: '',
+  services: [],
+  quota: '',
+  bidan: '',
+  kaders: [],
 };
 
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];

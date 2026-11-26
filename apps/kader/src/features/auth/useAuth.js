@@ -1,27 +1,39 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { authRequest } from './authApi.js';
 
-const STORAGE_KEY = 'tumbieLogin';
-const USER_KEY = 'tumbieKaderUser';
+export const STORAGE_KEY = 'tumbieKaderToken';
 
-// Sesi login kader (disimpan di sessionStorage).
 export function useAuth() {
-  const [username, setUsername] = useState(() => sessionStorage.getItem(USER_KEY) ?? '');
-  const [isLoggedIn, setIsLoggedIn] = useState(() => sessionStorage.getItem(STORAGE_KEY) === 'yes');
+  const [user, setUser] = useState(null);
+  const [checking, setChecking] = useState(() => Boolean(sessionStorage.getItem(STORAGE_KEY)));
 
-  const login = useCallback((name) => {
-    const value = String(name ?? '').trim();
-    sessionStorage.setItem(STORAGE_KEY, 'yes');
-    sessionStorage.setItem(USER_KEY, value);
-    setUsername(value);
-    setIsLoggedIn(true);
+  useEffect(() => {
+    const token = sessionStorage.getItem(STORAGE_KEY);
+    if (!token) return;
+
+    let active = true;
+    authRequest('me', { token }).then(({ user }) => {
+      if (!active) return;
+      if (user.role !== 'kader') throw new Error('Peran akun tidak sesuai.');
+      setUser(user);
+    }).catch(() => {
+      if (active) sessionStorage.removeItem(STORAGE_KEY);
+    }).finally(() => {
+      if (active) setChecking(false);
+    });
+
+    return () => { active = false; };
+  }, []);
+
+  const login = useCallback((token, user) => {
+    sessionStorage.setItem(STORAGE_KEY, token);
+    setUser(user);
   }, []);
 
   const logout = useCallback(() => {
     sessionStorage.removeItem(STORAGE_KEY);
-    sessionStorage.removeItem(USER_KEY);
-    setUsername('');
-    setIsLoggedIn(false);
+    setUser(null);
   }, []);
 
-  return { isLoggedIn, username, login, logout };
+  return { username: user?.username, isLoggedIn: Boolean(user), checking, login, logout };
 }

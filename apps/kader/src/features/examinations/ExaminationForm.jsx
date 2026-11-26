@@ -1,11 +1,14 @@
 import { forwardRef, useState } from 'react';
 import { Search } from 'lucide-react';
-import { VACCINES, PMT_OPTIONS, emptyExamForm } from './data.js';
+import { useUser } from '../auth/UserContext.jsx';
+import { emptyExamForm } from './data.js';
 
 // Formulir input pemeriksaan. onSave menerima isi form saat valid.
-const ExaminationForm = forwardRef(function ExaminationForm({ onSave, childNames }, ref) {
+const ExaminationForm = forwardRef(function ExaminationForm({ onSave, childNames, immunizations, pmtTypes }, ref) {
   const [form, setForm] = useState(emptyExamForm);
   const [error, setError] = useState('');
+  const [pending, setPending] = useState(false);
+  const { name } = useUser();
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
   const toggle = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.checked }));
@@ -15,31 +18,41 @@ const ExaminationForm = forwardRef(function ExaminationForm({ onSave, childNames
   }));
   const reset = () => { setForm(emptyExamForm); setError(''); };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    if (pending) return;
     if (!form.child.trim() || !form.date) return setError('Pilih balita dan isi tanggal pemeriksaan.');
+    if (!form.position) return setError('Pilih posisi pengukuran panjang atau tinggi badan.');
     if (!form.bb || !form.tb) return setError('Berat badan dan tinggi badan wajib diisi.');
-    onSave(form);
-    reset();
+    setError('');
+    setPending(true);
+    try {
+      await onSave(form);
+      reset();
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
     <form className="panel exam-form" onSubmit={submit} ref={ref} noValidate>
       <div className="exam-form-head">
         <h3>Input Pemeriksaan Anak</h3>
-        <span className="pill teal-pill dot">Kader Aktif: Kader Melati 01 (Balai RW 02)</span>
+        <span className="pill teal-pill dot">Kader Aktif: {name}</span>
       </div>
 
       <h4 className="step">1. DATA BALITA & WAKTU PEMERIKSAAN</h4>
       <div className="row-2 wide-left">
         <label className="fld sand">
-          <span>Pilih Balita (Nama atau NIK)</span>
+          <span>Pilih Balita</span>
           <div className="input-icon">
             <Search size={15} />
             <input
               name="child"
               list="exam-children"
-              placeholder="Ketik nama anak, contoh: Bima Satria atau 320101..."
+              placeholder="Ketik nama anak lalu pilih dari daftar"
               value={form.child}
               onChange={set('child')}
             />
@@ -71,13 +84,23 @@ const ExaminationForm = forwardRef(function ExaminationForm({ onSave, childNames
         ))}
       </div>
 
+      <label className="fld sand">
+        <span>Posisi saat mengukur panjang atau tinggi badan</span>
+        <select required value={form.position} onChange={set('position')}>
+          <option value="">Pilih posisi pengukuran</option>
+          <option value="lying">Berbaring (panjang badan)</option>
+          <option value="standing">Berdiri (tinggi badan)</option>
+        </select>
+      </label>
+
       <h4 className="step">3. IMUNISASI, VITAMIN, & INTERVENSI PMT</h4>
       <div className="row-2 imun-grid">
         <div className="imun-left">
           <label className="fld sand">
             <span>Jenis Vaksin / Imunisasi Diberikan</span>
             <select value={form.vaccine} onChange={set('vaccine')}>
-              {VACCINES.map((v) => <option key={v}>{v}</option>)}
+              <option value="Tidak ada imunisasi">Tidak ada imunisasi</option>
+              {immunizations.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
             </select>
           </label>
 
@@ -98,10 +121,10 @@ const ExaminationForm = forwardRef(function ExaminationForm({ onSave, childNames
           <div className="fld">
             <span>Pemberian Makanan Tambahan (PMT) Pemulihan / Penyuluhan</span>
             <div className="chip-row">
-              {PMT_OPTIONS.map((item) => (
-                <label key={item} className="check-chip">
-                  <input type="checkbox" checked={form.pmt.includes(item)} onChange={() => togglePmt(item)} />
-                  <i /> {item}
+              {pmtTypes.map(({ id, name }) => (
+                <label key={id} className="check-chip">
+                  <input type="checkbox" checked={form.pmt.includes(id)} onChange={() => togglePmt(id)} />
+                  <i /> {name}
                 </label>
               ))}
             </div>
@@ -128,7 +151,7 @@ const ExaminationForm = forwardRef(function ExaminationForm({ onSave, childNames
 
       <div className="form-actions">
         <button type="button" className="btn-sand" onClick={reset}>Batal</button>
-        <button type="submit" className="primary">Simpan Pemeriksaan</button>
+        <button type="submit" className="primary" disabled={pending}>Simpan Pemeriksaan</button>
       </div>
     </form>
   );

@@ -1,11 +1,23 @@
 import { forwardRef, useState } from 'react';
 import { Check, X } from 'lucide-react';
-import { SERVICE_OPTIONS, KADER_POOL, initialSessionForm } from './data.js';
+import { SERVICE_OPTIONS, initialSessionForm } from './data.js';
 
 // Formulir pembuatan sesi. onSubmit menerima isi form saat valid.
-const SessionForm = forwardRef(function SessionForm({ onSubmit }, ref) {
-  const [form, setForm] = useState(initialSessionForm);
+const SessionForm = forwardRef(function SessionForm({ onSubmit, locations, monthName, editing, onCancel }, ref) {
+  const initial = editing ? {
+    name: editing.title, date: editing.date, time: editing.start + ' – ' + editing.end + ' WIB',
+    place: editing.place, quota: String(editing.quota ?? ''), bidan: editing.midwife ?? '',
+    services: editing.services, kaders: editing.staff,
+  } : initialSessionForm;
+  const [form, setForm] = useState(initial);
   const [error, setError] = useState('');
+  const [pending, setPending] = useState(false);
+  const name = form.name.trim().toLowerCase();
+  const location = editing ? locations.find((item) => item.id === editing.posyanduId) : locations.length === 1 ? locations[0] : locations
+    .filter((item) => name === item.name.toLowerCase() || name.startsWith(item.name.toLowerCase() + ' '))
+    .sort((a, b) => b.name.length - a.name.length)[0];
+  const staff = location?.staff ?? [];
+  const selected = form.kaders.filter((id) => staff.some((item) => item.id === id));
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
   const toggleService = (item) => setForm((f) => ({
@@ -13,31 +25,40 @@ const SessionForm = forwardRef(function SessionForm({ onSubmit }, ref) {
     services: f.services.includes(item) ? f.services.filter((x) => x !== item) : [...f.services, item],
   }));
   const removeKader = (name) => setForm((f) => ({ ...f, kaders: f.kaders.filter((k) => k !== name) }));
-  const nextKader = KADER_POOL.find((k) => !form.kaders.includes(k));
-  const addKader = () => nextKader && setForm((f) => ({ ...f, kaders: [...f.kaders, nextKader] }));
+  const nextKader = staff.find((k) => !selected.includes(k.id));
+  const addKader = () => nextKader && setForm((f) => ({ ...f, kaders: [...selected, nextKader.id] }));
   const reset = () => { setForm(initialSessionForm); setError(''); };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    if (pending) return;
     if (!form.name.trim() || !form.date || !form.place.trim()) {
       return setError('Nama sesi, tanggal, dan lokasi kegiatan wajib diisi.');
     }
     if (!Number(form.quota)) return setError('Batas kuota harus berupa angka lebih dari 0.');
-    onSubmit(form);
-    setForm(initialSessionForm);
+    if (!location) return setError(locations.length ? 'Awali nama sesi dengan nama Posyandu wilayah tugas.' : 'Posyandu wilayah tugas belum tersedia.');
+    setPending(true);
     setError('');
+    try {
+      await onSubmit({ ...form, kaders: selected }, location);
+      reset();
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
     <form className="panel session-form" onSubmit={submit} ref={ref} noValidate>
       <div className="session-form-head">
-        <h3>Buat Sesi Posyandu</h3>
-        <span className="gray-pill pill">Desember 2026</span>
+        <h3>{editing ? "Ubah Sesi Posyandu" : "Buat Sesi Posyandu"}</h3>
+        <span className="gray-pill pill">{monthName}</span>
       </div>
 
       <label className="fld plain">
         <span>Nama Sesi & Pos Posyandu</span>
-        <input name="sessionName" value={form.name} onChange={set('name')} />
+        <input name="sessionName" placeholder={locations.map((item) => item.name).join(" / ")} value={form.name} onChange={set('name')} />
       </label>
 
       <div className="session-row">
@@ -47,7 +68,7 @@ const SessionForm = forwardRef(function SessionForm({ onSubmit }, ref) {
         </label>
         <label className="fld plain">
           <span>Rentang Waktu</span>
-          <input value={form.time} onChange={set('time')} />
+          <input placeholder="08.00 - 11.00 WIB" value={form.time} onChange={set('time')} />
         </label>
       </div>
 
@@ -93,10 +114,10 @@ const SessionForm = forwardRef(function SessionForm({ onSubmit }, ref) {
       <div className="fld">
         <span>Kader Jaga Ditugaskan</span>
         <div className="kader-box">
-          {form.kaders.map((k) => (
-            <span key={k} className="kader-chip">
-              {k}
-              <button type="button" aria-label={`Hapus ${k}`} onClick={() => removeKader(k)}><X size={10} /></button>
+          {staff.filter((k) => selected.includes(k.id)).map((k) => (
+            <span key={k.id} className="kader-chip">
+              {k.name}
+              <button type="button" aria-label={`Hapus ${k.name}`} onClick={() => removeKader(k.id)}><X size={10} /></button>
             </span>
           ))}
           <button type="button" className="kader-add" onClick={addKader} disabled={!nextKader}>+ Tambah Kader</button>
@@ -106,8 +127,8 @@ const SessionForm = forwardRef(function SessionForm({ onSubmit }, ref) {
       {error && <p className="form-error" role="alert">{error}</p>}
 
       <div className="form-actions">
-        <button type="button" className="btn-text" onClick={reset}>Reset Form</button>
-        <button type="submit" className="primary publish">Simpan & Publikasikan Jadwal</button>
+        <button type="button" className="btn-text" onClick={editing ? onCancel : reset}>{editing ? "Batal" : "Reset Form"}</button>
+        <button type="submit" className="primary publish" disabled={pending}>{editing ? "Simpan Perubahan" : "Simpan & Publikasikan Jadwal"}</button>
       </div>
     </form>
   );

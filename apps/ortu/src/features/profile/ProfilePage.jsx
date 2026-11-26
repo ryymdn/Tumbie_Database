@@ -1,9 +1,11 @@
+import { useProfilePhoto } from '../../../../shared/useProfilePhoto.js';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, Phone, Plus, AtSign } from 'lucide-react';
 import { useParent } from '../../context/ParentContext.jsx';
 import { PATHS } from '../../data/routes.js';
-import { NEXT_SCHEDULE_TEXT } from '../../data/parentData.js';
+import { authRequest } from '../auth/authApi.js';
+import { STORAGE_KEY } from '../auth/useAuth.js';
 import { initialsOf } from '../../data/format.js';
 import { Avatar, NutritionPill, PageHeading } from '../../components/parent/Widgets.jsx';
 
@@ -13,27 +15,36 @@ function Info({ label, value, full = false }) {
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { parent, kids, selectedChild, setSelectedId } = useParent();
-  const [pass, setPass] = useState({ next: '', confirm: '' });
+  const { parent, kids, selectedChild, setSelectedId, nextScheduleText, onLogout } = useParent();
+  const [pass, setPass] = useState({ current: '', next: '', confirm: '' });
   const [message, setMessage] = useState(null);
-  const [photo, setPhoto] = useState(null);
+  const [pending, setPending] = useState(false);
+  const { photo, busy, uploadPhoto, removePhoto } = useProfilePhoto(authRequest, sessionStorage.getItem(STORAGE_KEY), setMessage);
   const fileRef = useRef(null);
 
-  const reset = () => { setPass({ next: '', confirm: '' }); setMessage(null); };
+  const reset = () => { setPass({ current: '', next: '', confirm: '' }); setMessage(null); };
 
-  const save = () => {
-    if (pass.next || pass.confirm) {
-      if (pass.next.length < 8) return setMessage({ type: 'error', text: 'Kata sandi baru minimal 8 karakter.' });
-      if (pass.next !== pass.confirm) return setMessage({ type: 'error', text: 'Konfirmasi kata sandi tidak sama.' });
+  const save = async () => {
+    if (pending) return;
+    if (!pass.current || pass.next.length < 8) {
+      return setMessage({ type: 'error', text: 'Isi kata sandi lama dan kata sandi baru minimal 8 karakter.' });
     }
-    setPass({ next: '', confirm: '' });
-    setMessage({ type: 'ok', text: 'Perubahan berhasil disimpan.' });
+    if (pass.next !== pass.confirm) return setMessage({ type: 'error', text: 'Konfirmasi kata sandi tidak sama.' });
+    setPending(true);
+    try {
+      await authRequest('change-password', {
+        token: sessionStorage.getItem(STORAGE_KEY),
+        body: { currentPassword: pass.current, newPassword: pass.next },
+      });
+      onLogout();
+      navigate(PATHS.login, { replace: true, state: { notice: 'Kata sandi berhasil diubah. Silakan masuk kembali.' } });
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message });
+    } finally {
+      setPending(false);
+    }
   };
 
-  const onPhoto = (e) => {
-    const file = e.target.files?.[0];
-    if (file) setPhoto(URL.createObjectURL(file));
-  };
 
   const openChild = (id) => { setSelectedId(id); navigate(PATHS.children); };
 
@@ -41,7 +52,7 @@ export default function ProfilePage() {
     <>
       <PageHeading title="Profil Akun" description="Kelola informasi data keluarga, identitas orang tua, dan pengaturan keamanan akun.">
         <button type="button" className="btn-light" onClick={reset}>Batal</button>
-        <button type="button" className="btn-dark" onClick={save}>Simpan Perubahan</button>
+        <button type="button" className="btn-dark" onClick={save} disabled={pending}>Simpan Perubahan</button>
       </PageHeading>
       {message && <p className={`profile-message ${message.type}`} role="status">{message.text}</p>}
 
@@ -55,18 +66,19 @@ export default function ProfilePage() {
           <p><AtSign size={10} /> ID: @{parent.username} <b>•</b> <Phone size={10} /> WhatsApp: {parent.phone}</p>
           <span className="active-pill">{kids.length} Balita Aktif ({kids.map((k) => k.name).join(', ')})</span>
         </div>
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPhoto} />
-        <button type="button" className="btn-light small" onClick={() => fileRef.current?.click()}>Ubah Foto</button>
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={uploadPhoto} />
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" className="btn-light small" disabled={busy} onClick={() => fileRef.current?.click()}>Ubah Foto</button>
+          {photo && <button type="button" className="btn-light small" disabled={busy} onClick={removePhoto}>Hapus Foto</button>}
+        </div>
       </section>
 
       <div className="profile-cards">
         <section className="sand-card">
           <h2 className="bar-title">Data Pribadi Orang Tua</h2>
           <div className="detail-grid">
-            <Info label="Nama Ibu" value={parent.name} />
-            <Info label="NIK Ibu" value={parent.motherNik} />
-            <Info label="Nama Ayah" value={parent.fatherName} />
-            <Info label="NIK Ayah" value={parent.fatherNik} />
+            <Info label="Nama Orang Tua" value={parent.name} />
+            <Info label="NIK Orang Tua" value={parent.nik} />
             <Info label="No. WhatsApp / HP Aktif" value={parent.phone} full />
             <Info label="Alamat Domisili Sesuai KK" value={parent.addressFull} full />
           </div>
@@ -80,6 +92,7 @@ export default function ProfilePage() {
           <h2 className="bar-title">Keamanan & Kontak Darurat</h2>
           <p className="field-caption">Ubah Kata Sandi</p>
           <div className="pass-row">
+            <input type="password" aria-label="Kata Sandi Lama" placeholder="Kata Sandi Lama" autoComplete="current-password" value={pass.current} onChange={(e) => setPass((p) => ({ ...p, current: e.target.value }))} />
             <input type="password" placeholder="Kata Sandi Baru" autoComplete="new-password" value={pass.next} onChange={(e) => setPass((p) => ({ ...p, next: e.target.value }))} />
             <input type="password" placeholder="Konfirmasi Sandi" autoComplete="new-password" value={pass.confirm} onChange={(e) => setPass((p) => ({ ...p, confirm: e.target.value }))} />
           </div>
@@ -108,7 +121,7 @@ export default function ProfilePage() {
             <button type="button" className="btn-dark small" onClick={() => openChild(k.id)}>Kelola Data Anak</button>
           </div>
         ))}
-        <p className="kids-note">Jadwal Penimbangan Posyandu berikutnya: <b>{NEXT_SCHEDULE_TEXT}</b></p>
+        <p className="kids-note">Jadwal Penimbangan Posyandu berikutnya: <b>{nextScheduleText}</b></p>
       </section>
     </>
   );

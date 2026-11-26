@@ -6,17 +6,27 @@ import { emptyChildForm } from './data.js';
 const ChildForm = forwardRef(function ChildForm({ onSave }, ref) {
   const [form, setForm] = useState(emptyChildForm);
   const [error, setError] = useState('');
+  const [pending, setPending] = useState(false);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
   const reset = () => { setForm(emptyChildForm); setError(''); };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    if (pending) return;
     const missing = !form.name.trim() || !form.birth || !form.parent.trim() || !form.nik.trim() || !form.phone.trim() || !form.address.trim();
     if (missing) return setError('Lengkapi semua kolom bertanda * sebelum menyimpan.');
     if (!/^\d{16}$/.test(form.nik.trim())) return setError('NIK harus terdiri dari 16 digit angka.');
-    onSave(form);
-    reset();
+    setPending(true);
+    setError('');
+    try {
+      await onSave(form);
+      reset();
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -97,7 +107,7 @@ const ChildForm = forwardRef(function ChildForm({ onSave }, ref) {
 
       <div className="form-actions">
         <button type="button" className="btn-outline-plain" onClick={reset}>Batal</button>
-        <button type="submit" className="btn-dark"><Check size={16} /> Simpan Data Balita</button>
+        <button type="submit" disabled={pending} className="btn-dark"><Check size={16} /> Simpan Data Balita</button>
       </div>
     </form>
   );

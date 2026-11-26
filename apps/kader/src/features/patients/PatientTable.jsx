@@ -2,7 +2,7 @@ import { Pencil, Phone } from 'lucide-react';
 
 const COLUMNS = ['NAMA BALITA', 'TANGGAL LAHIR', 'JENIS KELAMIN', 'NAMA ORANG TUA', 'NO. HP', 'STATUS VERIFIKASI', 'AKSI'];
 
-export default function PatientTable({ rows }) {
+export default function PatientTable({ rows, message, onVerify, verifyingId }) {
   return (
     <div className="table-wrap">
       <table className="data-table child-table">
@@ -29,11 +29,11 @@ export default function PatientTable({ rows }) {
               <td>
                 <span className={`pill dot ${c.status === 'Terverifikasi' ? 'green-pill' : 'yellow-pill'}`}>{c.status}</span>
               </td>
-              <td><button className="icon-btn" aria-label={`Ubah ${c.name}`}><Pencil size={15} /></button></td>
+              <td><button className="icon-btn" type="button" title="Verifikasi data anak" aria-label={`Verifikasi ${c.name}`} disabled={Boolean(verifyingId) || c.status === 'Terverifikasi'} onClick={() => onVerify(c)}><Pencil size={15} /></button></td>
             </tr>
           ))}
           {rows.length === 0 && (
-            <tr><td colSpan={COLUMNS.length} className="table-empty">Belum ada data yang cocok dengan filter.</td></tr>
+            <tr><td colSpan={COLUMNS.length} className="table-empty">{message || 'Belum ada data yang cocok dengan filter.'}</td></tr>
           )}
         </tbody>
       </table>

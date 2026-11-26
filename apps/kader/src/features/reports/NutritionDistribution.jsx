@@ -1,46 +1,39 @@
 import { nutritionBreakdown } from './data.js';
 
-const COLORS = { green: '#12a06b', amber: '#f5a623', red: '#e5384b' };
-
-const percent = (count, total) => (count / total) * 100;
-const format = (n) => `${(Math.round(n * 10) / 10).toString().replace('.', ',')}`;
-
-export default function NutritionDistribution() {
-  const total = nutritionBreakdown.reduce((sum, item) => sum + item.count, 0);
-
-  // Susun conic-gradient dari proporsi tiap kategori.
-  let acc = 0;
-  const stops = nutritionBreakdown.map((item) => {
-    const start = acc;
-    acc += percent(item.count, total);
-    return `${COLORS[item.tone]} ${start}% ${acc}%`;
+export default function NutritionDistribution({ assessed, normal }) {
+  const total = assessed.length;
+  let start = 0;
+  const groups = nutritionBreakdown.map((item) => {
+    const count = assessed.filter((status) => item.statuses.includes(status)).length;
+    const end = start + (total ? count * 100 / total : 0);
+    const stop = item.color + ' ' + start + '% ' + end + '%';
+    start = end;
+    return { ...item, count, stop };
   });
-
-  const good = nutritionBreakdown[0];
-
+  const background = total ? 'conic-gradient(' + groups.map((item) => item.stop).join(',') + ')' : '#e6eeee';
   return (
     <div className="panel breakdown-panel">
       <div className="breakdown-head">
         <div>
-          <h3>Breakdown Status Gizi</h3>
-          <p>Standar Baku WHO - Antropometri Kemenkes</p>
+          <h3>Distribusi Status BB/U</h3>
+          <p>Pemeriksaan terakhir tiap anak usia 0–60 bulan</p>
         </div>
-        <span className="pill teal-total">{total} Anak Total</span>
+        <span className="pill teal-total">{total} anak dinilai</span>
       </div>
 
       <div className="breakdown-body">
-        <div className="donut" style={{ background: `conic-gradient(${stops.join(',')})` }}>
+        <div className="donut" style={{ background }}>
           <div className="donut-hole">
-            <b>{Math.round(percent(good.count, total))}%</b>
-            <small>GIZI BAIK</small>
+            <b>{total ? Math.round(100 * normal / total) + "%" : "—"}</b>
+            <small>BB NORMAL</small>
           </div>
         </div>
 
         <div className="legend">
-          {nutritionBreakdown.map((item) => (
+          {groups.map((item) => (
             <div key={item.key} className={`legend-item ${item.tone}`}>
               <span><i />{item.label}</span>
-              <b>{item.count} Anak <em>({format(percent(item.count, total))}%)</em></b>
+              <b>{item.count}</b>
             </div>
           ))}
         </div>

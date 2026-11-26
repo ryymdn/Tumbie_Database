@@ -1,8 +1,6 @@
 export const BASE_TOTAL = 38; // total balita pada sesi ini sebelum input baru
 
-export const VACCINES = ['DPT-HB-Hib 3', 'Campak Rubella (MR)', 'Polio', 'BCG', 'Tidak ada imunisasi'];
 
-export const PMT_OPTIONS = ['Telur Rebus (Protein Hewani)', 'Biskuit Balita Kemenkes', 'Susu Kotak UHT Pertumbuhan'];
 
 export const initialExams = [
   { id: 1, name: 'Bima Satria', info: 'L • 2 Thn 3 Bln', mother: 'Rina Wati', nik: '3201014506900001', bb: '12.4', bbDelta: '+0.3 kg', tb: '88.0', tbDelta: '+1.0 cm', lk: '48.0', status: 'Gizi Baik', service: ['DPT-HB-Hib 3', '+ Vit A (Merah)'], officer: 'Bdn. Dian Sastro' },
@@ -18,10 +16,11 @@ export const emptyExamForm = {
   bb: '',
   tb: '',
   lk: '',
-  vaccine: VACCINES[0],
+  position: '',
+  vaccine: 'Tidak ada imunisasi',
   notes: '',
-  vitA: true,
+  vitA: false,
   worm: false,
-  pmt: [PMT_OPTIONS[0], PMT_OPTIONS[1]],
-  nakes: 'Bidan Dian Sastro, Amd.Keb',
+  pmt: [],
+  nakes: '',
 };

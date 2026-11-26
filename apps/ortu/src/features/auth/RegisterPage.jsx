@@ -6,17 +6,20 @@ import IconField from '../../components/ui/IconField.jsx';
 import CheckBox from '../../components/ui/CheckBox.jsx';
 import { PATHS } from '../../data/routes.js';
 import { emptyRegisterForm } from './data.js';
+import { authRequest } from './authApi.js';
 import * as check from './validators.js';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState(emptyRegisterForm);
   const [errors, setErrors] = useState({});
+  const [pending, setPending] = useState(false);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    if (pending) return;
     const found = check.compact({
       name: check.required(form.name, 'Nama lengkap'),
       nik: check.nik(form.nik),
@@ -29,7 +32,24 @@ export default function RegisterPage() {
     });
     setErrors(found);
     if (Object.keys(found).length) return;
-    navigate(PATHS.login, { state: { notice: 'Pendaftaran berhasil. Silakan masuk dengan akun Anda.' } });
+    setPending(true);
+    try {
+      await authRequest('register', {
+        body: {
+          fullName: form.name.trim(),
+          nik: form.nik.trim(),
+          phone: form.phone.trim(),
+          username: form.username.trim(),
+          address: form.address.trim(),
+          password: form.password,
+        },
+      });
+      navigate(PATHS.login, { state: { notice: 'Pendaftaran berhasil. Silakan masuk dengan akun Anda.' } });
+    } catch (error) {
+      setErrors({ submit: error.message });
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -60,7 +80,10 @@ export default function RegisterPage() {
           rekam data medis Posyandu Ceria & Puskesmas Pembina.
         </CheckBox>
 
-        <button className="auth-submit teal" type="submit">DAFTAR SEKARANG <ArrowRight size={15} /></button>
+        {errors.submit && <p role="alert">{errors.submit}</p>}
+        <button className="auth-submit teal" type="submit" disabled={pending}>
+          {pending ? 'Mendaftarkan…' : 'DAFTAR SEKARANG'} <ArrowRight size={15} />
+        </button>
       </form>
 
       <p className="auth-foot">Sudah memiliki akun Tumbie? <Link to={PATHS.login}>Masuk di sini</Link></p>

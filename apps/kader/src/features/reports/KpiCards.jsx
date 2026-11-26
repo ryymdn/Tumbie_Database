@@ -1,11 +1,17 @@
 import { TriangleAlert } from 'lucide-react';
-import Sparkline from './Sparkline.jsx';
 import { kpiCards } from './data.js';
 
-export default function KpiCards() {
+export default function KpiCards({ total, examined, normal, attention }) {
+  const cards = kpiCards.map((card, index) => ({
+    ...card,
+    value: (index === 0 ? total : index === 1 ? examined : normal) ?? '—',
+    badge: ['Wilayah tugas', 'Bulan ini', 'BB/U'][index],
+    foot: ['Balita terdaftar di wilayah tugas', 'Balita dengan pemeriksaan tercatat bulan ini', 'Berdasarkan pemeriksaan terakhir'][index],
+    footTone: '',
+  }));
   return (
     <div className="kpi-row">
-      {kpiCards.map((k) => (
+      {cards.map((k) => (
         <div className="kpi" key={k.label}>
           <div className="kpi-head">
             <span>{k.label}</span>
@@ -13,7 +19,7 @@ export default function KpiCards() {
           </div>
           <div className="kpi-main">
             <div><strong>{k.value}</strong> <span>{k.unit}</span></div>
-            <Sparkline points={k.trend} />
+
           </div>
           <small className={k.footTone}>{k.foot}</small>
         </div>
@@ -22,13 +28,13 @@ export default function KpiCards() {
       <div className="kpi alert">
         <div className="kpi-head">
           <span>Perhatian Khusus</span>
-          <em className="kpi-badge red">Segera Rujuk</em>
+          <em className="kpi-badge red">BB/U</em>
         </div>
         <div className="kpi-main">
-          <div><strong className="red">1</strong> <span className="red">Stunting</span> <span className="amber">• 2 Kurang</span></div>
+          <div><strong>{attention ?? "—"}</strong></div>
           <span className="alert-icon"><TriangleAlert size={16} /></span>
         </div>
-        <small>Intervensi PMT Tinggi Protein</small>
+        <small>Kategori BB/U di luar rentang normal</small>
       </div>
     </div>
   );

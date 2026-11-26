@@ -11,7 +11,9 @@ import LaporanPage from './features/reports/LaporanPage.jsx';
 import ProfilPage from './features/profile/ProfilPage.jsx';
 
 export default function App() {
-  const { isLoggedIn, username, login, logout } = useAuth();
+  const { isLoggedIn, username, checking, login, logout } = useAuth();
+
+  if (checking) return <p role="status">Memeriksa sesi...</p>;
 
   if (!isLoggedIn) return <LoginPage onLogin={login} />;
 
@@ -25,7 +27,7 @@ export default function App() {
           <Route path="/pemeriksaan" element={<PemeriksaanPage />} />
           <Route path="/jadwal" element={<JadwalPage />} />
           <Route path="/laporan" element={<LaporanPage />} />
-          <Route path="/profil" element={<ProfilPage />} />
+          <Route path="/profil" element={<ProfilPage onLogout={logout} />} />
           <Route path="*" element={<DashboardPage />} />
         </Route>
       </Routes>

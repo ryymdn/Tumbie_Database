@@ -1,10 +1,12 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Clock3, Smile } from 'lucide-react';
 import { useParent } from '../../context/ParentContext.jsx';
 import { PATHS } from '../../data/routes.js';
-import { DASHBOARD_EXAMS, DASHBOARD_SCHEDULES } from '../../data/parentData.js';
+import { apiRequest } from '../auth/authApi.js';
+import { STORAGE_KEY } from '../auth/useAuth.js';
 import { formatAge } from '../../data/format.js';
-import { NutritionPill } from '../../components/parent/Widgets.jsx';
+
 
 function StatCard({ value, unit, label, delta, onClick }) {
   return (
@@ -23,7 +25,26 @@ function StatCard({ value, unit, label, delta, onClick }) {
 export default function HomePage() {
   const navigate = useNavigate();
   const { parent, kids, selectedChild } = useParent();
-  const latest = selectedChild.latest;
+  const latest = selectedChild?.latest;
+  const [schedules, setSchedules] = useState([]);
+  const [scheduleMessage, setScheduleMessage] = useState('Memuat jadwal…');
+
+  useEffect(() => {
+    let active = true;
+    apiRequest('schedules', { token: sessionStorage.getItem(STORAGE_KEY) })
+      .then(({ schedules }) => {
+        if (!active) return;
+        setSchedules(schedules);
+        setScheduleMessage('');
+      })
+      .catch((error) => { if (active) setScheduleMessage(error.message); });
+    return () => { active = false; };
+  }, []);
+
+  const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
+  const upcoming = schedules.filter((item) => item.date >= today && item.posyandu === selectedChild?.posyandu).slice(0, 3);
+  const monthLabel = (date) => new Date(date + 'T12:00:00').toLocaleDateString('id-ID', { month: 'short' });
+  const next = upcoming[0];
 
   return (
     <>
@@ -37,30 +58,31 @@ export default function HomePage() {
           <span className="child-mini-icon"><Smile size={26} strokeWidth={2} /></span>
           <div>
             <span>PROFIL AKTIF</span>
-            <strong>{selectedChild.name}</strong>
-            <small>{formatAge(selectedChild.birthDate, { capital: true })}</small>
+            <strong>{selectedChild?.name ?? 'Belum ada anak terdaftar'}</strong>
+            <small>{selectedChild ? formatAge(selectedChild.birthDate, { capital: true }) : '—'}</small>
           </div>
         </div>
       </div>
 
       <div className="dash-stats-grid">
         <StatCard value={kids.length} label="Jumlah Anak" onClick={() => navigate(PATHS.children)} />
-        <StatCard value={latest.weight} unit="kg" label="Berat Terakhir" delta={selectedChild.hasHistory ? '+0,3 kg' : undefined} onClick={() => navigate(PATHS.history)} />
-        <StatCard value={latest.height} unit="cm" label="Tinggi Terakhir" delta={selectedChild.hasHistory ? '+1 cm' : undefined} onClick={() => navigate(PATHS.history)} />
-        <StatCard value="01" unit="Des" label="Jadwal Berikutnya" onClick={() => navigate(PATHS.schedule)} />
+        <StatCard value={latest?.weight ?? "—"} unit={latest?.weight !== "—" && latest?.weight ? "kg" : undefined} label="Berat Terakhir" onClick={() => navigate(PATHS.history)} />
+        <StatCard value={latest?.height ?? "—"} unit={latest?.height !== "—" && latest?.height ? "cm" : undefined} label="Tinggi Terakhir" onClick={() => navigate(PATHS.history)} />
+        <StatCard value={next?.date.slice(8, 10) ?? "—"} unit={next && monthLabel(next.date)} label="Jadwal Berikutnya" onClick={() => navigate(PATHS.schedule)} />
       </div>
 
       <div className="parent-dashboard-grid">
         <section className="parent-panel dash-schedule-panel">
           <div className="dash-panel-title"><h2>Jadwal Posyandu</h2><p>Agenda kegiatan terdekat</p></div>
           <div className="dash-schedule-list">
-            {DASHBOARD_SCHEDULES.map((item, i) => (
-              <article className={`dash-schedule-item ${i === 0 ? 'next' : ''}`} key={item.day + item.month}>
-                <div className="dash-date-tile"><strong>{item.day}</strong><small>{item.month}</small></div>
+            {!upcoming.length && <p role="status">{scheduleMessage || "Belum ada jadwal mendatang."}</p>}
+            {upcoming.map((item, i) => (
+              <article className={`dash-schedule-item ${i === 0 ? 'next' : ''}`} key={item.id}>
+                <div className="dash-date-tile"><strong>{item.date.slice(8, 10)}</strong><small>{monthLabel(item.date)}</small></div>
                 <div className="dash-schedule-info">
                   <strong>{item.title}</strong>
-                  <span><Clock3 size={12} /> {item.time}</span>
-                  <em>{item.chip}</em>
+                  <span><Clock3 size={12} /> {item.start} – {item.end} WIB</span>
+                  <em>{item.place}</em>
                 </div>
                 {i === 0 && <i className="next-dot" aria-label="Jadwal berikutnya" />}
               </article>
@@ -70,24 +92,24 @@ export default function HomePage() {
 
         <section className="parent-panel dash-history-panel">
           <div className="dash-panel-head">
-            <div className="dash-panel-title"><h2>Riwayat Pemeriksaan Anak</h2><p>Hasil pemeriksaan terakhir {selectedChild.name}</p></div>
+            <div className="dash-panel-title"><h2>Riwayat Pemeriksaan Anak</h2><p>Hasil pemeriksaan terakhir{selectedChild ? " " + selectedChild.name : ""}</p></div>
             <button className="text-action" type="button" onClick={() => navigate(PATHS.history)}>Lihat Semua →</button>
           </div>
           <div className="parent-table-wrap">
             <table className="dash-table">
               <thead>
-                <tr><th>Tanggal</th><th>Berat Badan</th><th>Tinggi Badan</th><th>Status Gizi</th><th>Petugas</th></tr>
+                <tr><th>Tanggal</th><th>Berat Badan</th><th>Tinggi Badan</th><th>Status BB/U</th><th>Petugas</th></tr>
               </thead>
               <tbody>
-                {DASHBOARD_EXAMS.map((row) => (
-                  <tr key={row.date}>
-                    <td><i className="row-dot" />{row.date}</td>
-                    <td>{row.weight}</td>
-                    <td>{row.height}</td>
-                    <td><NutritionPill variant="cyan" /></td>
+                {selectedChild?.hasHistory ? selectedChild.exams.slice(0, 3).map((row) => (
+                  <tr key={row.id}>
+                    <td><i className="row-dot" />{row.dateText}</td>
+                    <td>{row.weight ?? '—'}</td>
+                    <td>{row.height ?? '—'}</td>
+                    <td>{row.nutrition}</td>
                     <td className="officer">{row.officer}</td>
                   </tr>
-                ))}
+                )) : <tr><td colSpan={5}>Belum ada riwayat pemeriksaan.</td></tr>}
               </tbody>
             </table>
           </div>

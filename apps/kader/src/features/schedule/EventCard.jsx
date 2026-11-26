@@ -1,6 +1,6 @@
 import { Clock, MapPin, UserRoundCog } from 'lucide-react';
 
-export default function EventCard({ session }) {
+export default function EventCard({ session, onEdit, onQueue }) {
   const {
     featured, weekday, day, month, title, badge, time, place, quotaLabel, quota,
     serviceLabel, services, attendance, remaining, staff = [], staffCount, queueCount,
@@ -51,13 +51,17 @@ export default function EventCard({ session }) {
               <small>{staffCount} Petugas<br />bertugas</small>
             </div>
             <div className="event-actions">
-              <button className="btn-sand">Ubah Jadwal</button>
-              <button className="primary"><UserRoundCog size={14} /> Kelola Antrean ({queueCount})</button>
+              <button type="button" className="btn-sand" onClick={onEdit} disabled={!onEdit}>Ubah Jadwal</button>
+              <button type="button" className="primary" onClick={onQueue}><UserRoundCog size={14} /> Kelola Antrean ({queueCount})</button>
             </div>
           </div>
         </>
       ) : (
-        <div className="service-chips">{services.map((s) => <span key={s}>{s}</span>)}</div>
+        <div className="service-chips">
+          {services.map((s) => <span key={s}>{s}</span>)}
+          {onEdit && <button type="button" className="btn-sand" onClick={onEdit}>Ubah Jadwal</button>}
+          <button type="button" className="primary" onClick={onQueue}><UserRoundCog size={14} /> Kelola Antrean ({queueCount})</button>
+        </div>
       )}
     </article>
   );

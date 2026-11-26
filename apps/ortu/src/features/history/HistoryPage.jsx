@@ -1,7 +1,7 @@
+import { useRef, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { useParent } from '../../context/ParentContext.jsx';
-import { EXAMINATIONS, NEXT_SCHEDULE_TEXT } from '../../data/parentData.js';
-import { NextScheduleNote, NutritionPill, PageHeading } from '../../components/parent/Widgets.jsx';
+import { NextScheduleNote, PageHeading } from '../../components/parent/Widgets.jsx';
 import PickChild from '../../components/parent/PickChild.jsx';
 import GrowthChart from './GrowthChart.jsx';
 
@@ -16,34 +16,40 @@ function Metric({ label, value, unit, note, up = false, good = false }) {
 }
 
 export default function HistoryPage() {
-  const { selectedChild: child } = useParent();
-  const { latest } = child;
+  const { selectedChild: child, nextScheduleText } = useParent();
+  const latest = child?.latest;
+  const dialog = useRef(null);
+  const [detail, setDetail] = useState(null);
 
   return (
     <>
       <PageHeading title="Riwayat Pemeriksaan" description="Catatan lengkap riwayat medis, penimbangan, dan imunisasi berkala.">
-        <PickChild withAge />
+        {child && <PickChild withAge />}
       </PageHeading>
 
       <section className="latest-exam-panel">
         <h2>Pemeriksaan Terakhir</h2>
-        <p className="exam-sub">{child.hasHistory ? 'Hasil pemeriksaan 03 November 2026 di Posyandu Melati' : 'Belum ada pemeriksaan di Posyandu. Menampilkan data awal saat lahir.'}</p>
+        <p className="exam-sub">{child?.hasHistory ? "Hasil pemeriksaan " + child.exams[0].dateText + " di " + child.posyandu : 'Belum ada pemeriksaan di Posyandu.'}</p>
 
+        {child?.exams[0]?.heightForAge && <p className="exam-sub">
+          {child.exams[0].heightForAge.indicator}: {child.exams[0].heightForAge.status}
+          {child.exams[0].weightForHeight && ' · ' + child.exams[0].weightForHeight.indicator + ': ' + child.exams[0].weightForHeight.status}
+        </p>}
         <div className="hist-metrics">
-          <Metric label="Berat Badan" value={latest.weight} unit="kg" up={child.hasHistory} note={child.hasHistory ? '+0,3 kg dari bulan lalu' : 'Data awal saat lahir'} />
-          <Metric label="Tinggi Badan" value={latest.height} unit="cm" up={child.hasHistory} note={child.hasHistory ? '+1 cm dari bulan lalu' : 'Panjang badan saat lahir'} />
-          <Metric label="Lingkar Kepala" value={latest.head} unit={latest.head !== '-' ? 'cm' : ''} note={child.hasHistory ? 'Normal sesuai usia' : 'Data awal saat lahir'} />
-          <Metric label="Status Gizi" value={latest.nutrition} good={child.hasHistory} note={child.hasHistory ? 'Garis Hijau KMS' : 'Menunggu pemeriksaan'} />
+          <Metric label="Berat Badan" value={latest?.weight ?? '—'} unit={latest?.weight && latest.weight !== "—" ? "kg" : undefined} note={child?.hasHistory ? 'Pengukuran terakhir' : 'Menunggu pemeriksaan'} />
+          <Metric label="Tinggi Badan" value={latest?.height ?? '—'} unit={latest?.height && latest.height !== "—" ? "cm" : undefined} note={child?.hasHistory ? 'Pengukuran terakhir' : 'Menunggu pemeriksaan'} />
+          <Metric label="Lingkar Kepala" value={latest?.head ?? '—'} unit={latest?.head && latest.head !== '-' && latest.head !== '—' ? 'cm' : ''} note={child?.hasHistory ? 'Pengukuran terakhir' : 'Menunggu pemeriksaan'} />
+          <Metric label="Status BB/U" value={latest?.nutrition ?? '—'} note={child?.hasHistory ? 'Berat badan menurut umur' : 'Menunggu pemeriksaan'} />
         </div>
 
-        {child.hasHistory && (
+        {child?.hasHistory && (
           <div className="growth-panel">
             <div className="growth-copy">
-              <h3><i />Tren Pertumbuhan (KMS 6 Bulan)</h3>
-              <p>Pertumbuhan fisik anak Anda konsisten naik mengikuti pita hijau standar KMS Kemenkes.</p>
-              <div className="growth-legend"><span><i className="lg-weight" />Berat (kg)</span><span><i className="lg-height" />Tinggi (cm)</span></div>
+              <h3><i />Grafik KMS Berat Badan menurut Umur</h3>
+              <p>Berat hasil pemeriksaan dibandingkan dengan ambang WHO BB/U.</p>
+              <div className="growth-legend"><span><i className="lg-weight" />Berat (kg)</span><span><i className="lg-height" />Ambang WHO (SD)</span></div>
             </div>
-            <GrowthChart />
+            <GrowthChart exams={child.exams} gender={child.gender} />
           </div>
         )}
       </section>
@@ -53,32 +59,49 @@ export default function HistoryPage() {
           <table className="exam-table">
             <thead>
               <tr>
-                <th>TANGGAL</th><th>BB (KG)</th><th>TB (CM)</th><th>LK (CM)</th><th>STATUS GIZI</th>
+                <th>TANGGAL</th><th>BB (KG)</th><th>TB (CM)</th><th>LK (CM)</th><th>STATUS BB/U</th>
                 <th>IMUNISASI & SUPLEMEN</th><th>PETUGAS / BIDAN</th><th>STATUS</th><th>AKSI</th>
               </tr>
             </thead>
             <tbody>
-              {child.hasHistory ? EXAMINATIONS.map((row) => (
-                <tr key={row.date}>
-                  <td>{row.date}</td>
-                  <td>{row.weight}</td>
-                  <td>{row.height}</td>
-                  <td>{row.head}</td>
-                  <td><NutritionPill variant="green" label="Gizi Baik" /></td>
-                  <td>{row.immunization ?? <i className="muted-italic">Pengukuran Rutin</i>}</td>
+              {child?.hasHistory ? child.exams.map((row) => (
+                <tr key={row.id}>
+                  <td>{row.dateText}</td>
+                  <td>{row.weight ?? '—'}</td>
+                  <td>{row.height ?? '—'}</td>
+                  <td>{row.head ?? '—'}</td>
+                  <td>{row.nutrition}</td>
+                  <td>{row.immunization || <i className="muted-italic">Pengukuran Rutin</i>}</td>
                   <td>{row.officer}</td>
                   <td><span className="done-pill">Selesai</span></td>
-                  <td><button type="button" className="link-btn">Detail</button></td>
+                  <td><button type="button" className="link-btn" onClick={() => { setDetail(row); dialog.current?.showModal(); }}>Detail</button></td>
                 </tr>
               )) : (
-                <tr><td colSpan={9} className="table-empty">Belum ada riwayat pemeriksaan untuk {child.name}.</td></tr>
+                <tr><td colSpan={9} className="table-empty">Belum ada riwayat pemeriksaan untuk {child?.name ?? "akun ini"}.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </section>
 
-      <NextScheduleNote text={NEXT_SCHEDULE_TEXT} />
+      <dialog ref={dialog} className="latest-exam-panel" aria-labelledby="exam-detail-title">
+        <h3 id="exam-detail-title">Detail Pemeriksaan {child?.name}</h3>
+        {detail && <dl>
+          <dt>Tanggal</dt><dd>{detail.dateText}</dd>
+          <dt>Berat badan</dt><dd>{detail.weight == null ? '—' : detail.weight + ' kg'}</dd>
+          <dt>Panjang atau tinggi badan</dt><dd>{detail.height == null ? '—' : detail.height + ' cm'}</dd>
+          <dt>Lingkar kepala</dt><dd>{detail.head == null ? '—' : detail.head + ' cm'}</dd>
+          <dt>Posisi ukur</dt><dd>{detail.position === 'lying' ? 'Berbaring' : detail.position === 'standing' ? 'Berdiri' : 'Belum dicatat'}</dd>
+          <dt>BB/U</dt><dd>{detail.nutrition}</dd>
+          {detail.heightForAge && <><dt>{detail.heightForAge.indicator}</dt><dd>{detail.heightForAge.status}</dd></>}
+          {detail.weightForHeight && <><dt>{detail.weightForHeight.indicator}</dt><dd>{detail.weightForHeight.status}</dd></>}
+          <dt>Imunisasi & suplemen</dt><dd>{detail.immunization || '—'}</dd>
+          <dt>Petugas</dt><dd>{detail.officer}</dd>
+        </dl>}
+        <form method="dialog"><button className="btn-dark">Tutup</button></form>
+      </dialog>
+
+      <NextScheduleNote text={nextScheduleText} />
     </>
   );
 }

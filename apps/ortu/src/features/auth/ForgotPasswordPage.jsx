@@ -1,67 +1,78 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, AtSign, IdCard, Lock, LockKeyhole, MessageSquare } from 'lucide-react';
 import AuthLayout from '../../components/layout/AuthLayout.jsx';
 import IconField from '../../components/ui/IconField.jsx';
 import CheckBox from '../../components/ui/CheckBox.jsx';
 import { PATHS } from '../../data/routes.js';
-import { DEMO_OTP, OTP_COOLDOWN_SECONDS, emptyForgotForm, emptyResetForm } from './data.js';
+import { emptyForgotForm, emptyResetForm } from './data.js';
+import { authRequest } from './authApi.js';
 import * as check from './validators.js';
 
-// Dua langkah: 'verify' (identitas + OTP) lalu 'reset' (kata sandi baru).
 export default function ForgotPasswordPage() {
   const navigate = useNavigate();
-  const [step, setStep] = useState('verify');
   const [form, setForm] = useState(emptyForgotForm);
   const [reset, setReset] = useState(emptyResetForm);
   const [errors, setErrors] = useState({});
-  const [otpSent, setOtpSent] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
-
-  useEffect(() => {
-    if (cooldown <= 0) return undefined;
-    const timer = setTimeout(() => setCooldown((s) => s - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [cooldown]);
-
-  const setVerify = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
-  const setNew = (key) => (e) => setReset((r) => ({ ...r, [key]: e.target.value }));
-
-  const identityErrors = () => check.compact({
-    nik: check.nik(form.nik),
-    phone: check.phone(form.phone),
-    username: check.username(form.username),
+  const [notice, setNotice] = useState('');
+  const [pending, setPending] = useState(false);
+  const [step, setStep] = useState('request');
+  const setVerify = (key) => (e) => setForm((fields) => ({ ...fields, [key]: e.target.value }));
+  const setNew = (key) => (e) => setReset((fields) => ({ ...fields, [key]: e.target.value }));
+  const account = { username: form.username.trim(), nik: form.nik.trim(), phone: form.phone.trim() };
+  const accountErrors = () => check.compact({
+    nik: check.nik(account.nik),
+    phone: check.phone(account.phone),
+    username: check.username(account.username),
   });
 
-  const sendOtp = () => {
-    const found = identityErrors();
+  const sendOtp = async () => {
+    if (pending) return;
+    const found = accountErrors();
     setErrors(found);
+    setNotice('');
     if (Object.keys(found).length) return;
-    setOtpSent(true);
-    setCooldown(OTP_COOLDOWN_SECONDS);
+    setPending(true);
+    try {
+      await authRequest('password-reset/request', { body: account });
+      setNotice('Jika data akun cocok, kode OTP akan dikirim ke WhatsApp terdaftar.');
+    } catch (error) {
+      setErrors({ otp: error.message });
+    } finally {
+      setPending(false);
+    }
   };
 
-  const submitVerify = (e) => {
-    e.preventDefault();
-    const found = identityErrors();
-    if (!otpSent) found.otp = 'Kirim OTP terlebih dahulu.';
-    else if (form.otp.trim() !== DEMO_OTP) found.otp = 'Kode OTP tidak sesuai.';
+  const submitVerify = (event) => {
+    event.preventDefault();
+    if (pending) return;
+    const found = accountErrors();
+    if (!/^\d{6}$/.test(form.otp.trim())) found.otp = 'Masukkan kode OTP 6 digit.';
     if (!form.agree) found.agree = 'Setujui syarat & ketentuan untuk melanjutkan.';
     setErrors(found);
-    if (Object.keys(found).length) return;
-    setStep('reset');
+    if (!Object.keys(found).length) setStep('reset');
   };
 
-  const submitReset = (e) => {
-    e.preventDefault();
+  const submitReset = async (event) => {
+    event.preventDefault();
+    if (pending) return;
     const found = check.compact({
       password: check.newPassword(reset.password),
       confirm: check.sameAs(reset.confirm, reset.password),
-      human: reset.human ? '' : 'Centang untuk melanjutkan.',
     });
     setErrors(found);
     if (Object.keys(found).length) return;
-    navigate(PATHS.login, { state: { notice: 'Kata sandi berhasil diubah. Silakan masuk kembali.' } });
+    setPending(true);
+    try {
+      await authRequest('password-reset/confirm', {
+        body: { ...account, otp: form.otp.trim(), password: reset.password },
+      });
+      navigate(PATHS.login, { replace: true, state: { notice: 'Kata sandi berhasil diubah. Silakan masuk kembali.' } });
+    } catch (error) {
+      setErrors({ reset: error.message });
+    } finally {
+      setPending(false);
+    }
   };
 
   if (step === 'reset') {
@@ -69,20 +80,17 @@ export default function ForgotPasswordPage() {
       <AuthLayout>
         <form className="auth-form" onSubmit={submitReset} noValidate>
           <div className="auth-grid">
-            <IconField label="Kata Sandi" required reveal icon={Lock} placeholder="Minimal 8 karakter" autoComplete="new-password" value={reset.password} onChange={setNew('password')} error={errors.password} />
-            <IconField label="Ulangi Kata Sandi" required reveal icon={LockKeyhole} placeholder="Ketik ulang sandi" autoComplete="new-password" value={reset.confirm} onChange={setNew('confirm')} error={errors.confirm} />
+            <IconField label="Kata Sandi Baru" required reveal icon={Lock} autoComplete="new-password" value={reset.password} onChange={setNew('password')} error={errors.password} />
+            <IconField label="Ulangi Kata Sandi" required reveal icon={LockKeyhole} autoComplete="new-password" value={reset.confirm} onChange={setNew('confirm')} error={errors.confirm} />
           </div>
-
-          <CheckBox checked={reset.human} onChange={(human) => setReset((r) => ({ ...r, human }))} error={errors.human}>
-            Saya bukan robot
-          </CheckBox>
-
-          <button className="auth-submit teal" type="submit">Ubah Kata Sandi <ArrowRight size={15} /></button>
+          {errors.reset && <p role="alert">{errors.reset}</p>}
+          <button className="auth-submit teal" type="submit" disabled={pending}>Ubah Kata Sandi <ArrowRight size={15} /></button>
         </form>
-        <p className="auth-foot"><Link to={PATHS.login}>Kembali ke halaman masuk</Link></p>
+        <p className="auth-foot"><button type="button" className="auth-otp-btn" disabled={pending} onClick={() => { setReset(emptyResetForm); setErrors({}); setStep('request'); }}>Kembali ke kode OTP</button></p>
       </AuthLayout>
     );
   }
+
 
   return (
     <AuthLayout>
@@ -95,9 +103,10 @@ export default function ForgotPasswordPage() {
         </div>
 
         <div className="auth-otp-row">
-          {otpSent && <small className="auth-hint">Kode demo: {DEMO_OTP}</small>}
-          <button type="button" className="auth-otp-btn" onClick={sendOtp} disabled={cooldown > 0}>
-            {cooldown > 0 ? `Kirim ulang (${cooldown}s)` : otpSent ? 'Kirim ulang OTP' : 'Kirim OTP'}
+
+          {notice && <small className="auth-hint" role="status">{notice}</small>}
+          <button type="button" className="auth-otp-btn" onClick={sendOtp} disabled={pending}>
+            Kirim OTP
           </button>
         </div>
 

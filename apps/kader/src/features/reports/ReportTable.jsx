@@ -1,19 +1,24 @@
-import { useState } from 'react';
-import { ArrowUp, ChevronRight, ClipboardList, Minus, Search, TriangleAlert, Syringe } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { ChevronRight, ClipboardList, Search } from 'lucide-react';
 import Pagination from '../../components/ui/Pagination.jsx';
-import { STATUS_TABS, TOTAL_EXAMINED, reportRows } from './data.js';
+import { STATUS_TABS } from './data.js';
+import WeightForAgeChart from '../../../../shared/WeightForAgeChart.jsx';
 
-const STATUS_CLASS = { 'Gizi Baik': 'green-pill', 'Gizi Kurang': 'yellow-pill', Stunting: 'red-pill' };
+const STATUS_CLASS = { 'Berat badan normal': 'green-pill', 'Berat badan kurang': 'yellow-pill', 'Berat badan sangat kurang': 'red-pill', 'Risiko berat badan lebih': 'yellow-pill' };
 
-function TrendMark({ trend }) {
-  if (trend === 'up') return <ArrowUp size={12} className="trend up" />;
-  if (trend === 'flat') return <Minus size={12} className="trend flat" />;
-  return <TriangleAlert size={12} className="trend alert" />;
-}
-
-export default function ReportTable() {
+export default function ReportTable({ reportRows, exams, message }) {
   const [tab, setTab] = useState('Semua');
   const [query, setQuery] = useState('');
+  const dialog = useRef(null);
+  const [child, setChild] = useState(null);
+  const measurements = exams.filter((exam) => exam.childId === child?.childId && exam.weightForAge).map((exam) => ({
+    id: exam.id, date: exam.date, ageMonths: exam.weightForAge.ageMonths, weight: Number(exam.bb),
+  }));
+
+  const openChart = (record) => {
+    setChild(record);
+    dialog.current?.showModal();
+  };
 
   const keyword = query.trim().toLowerCase();
   const rows = reportRows.filter((r) =>
@@ -22,12 +27,18 @@ export default function ReportTable() {
 
   return (
     <div className="panel report-panel">
+      <dialog ref={dialog} className="panel" aria-labelledby="kms-report-title">
+        <h3 id="kms-report-title">Grafik KMS BB/U {child?.name}</h3>
+        <p>Berat hasil pemeriksaan dibandingkan dengan ambang WHO BB/U.</p>
+        <WeightForAgeChart exams={measurements} gender={child?.gender} />
+        <form method="dialog"><button className="action-pill blue">Tutup</button></form>
+      </dialog>
       <div className="report-head">
         <div className="report-title">
           <span className="report-icon"><ClipboardList size={16} /></span>
           <div>
-            <h3>Data Pemeriksaan Balita Periode November</h3>
-            <p>Rincian antropometri lengkap balita RW 05 dengan status kurva pertumbuhan</p>
+            <h3>Data Pemeriksaan Balita</h3>
+            <p>Rincian antropometri balita di wilayah tugas kader</p>
           </div>
         </div>
 
@@ -42,10 +53,10 @@ export default function ReportTable() {
                 key={t}
                 role="tab"
                 aria-selected={tab === t}
-                className={`${tab === t ? 'on' : ''} ${t === 'Stunting' ? 'danger' : ''}`}
+                className={`${tab === t ? 'on' : ''} ${t === 'Berat badan sangat kurang' ? 'danger' : ''}`}
                 onClick={() => setTab(t)}
               >
-                {t === 'Semua' ? `Semua (${TOTAL_EXAMINED})` : t}
+                {t === 'Semua' ? `Semua (${reportRows.length})` : t}
               </button>
             ))}
           </div>
@@ -60,7 +71,7 @@ export default function ReportTable() {
               <th>USIA & GENDER</th>
               <th>BERAT BADAN</th>
               <th>TINGGI BADAN</th>
-              <th>STATUS GIZI</th>
+              <th>STATUS BB/U</th>
               <th>TANGGAL PERIKSA</th>
               <th>AKSI</th>
             </tr>
@@ -72,39 +83,31 @@ export default function ReportTable() {
                   <div className="cell-person">
                     <span className={`avatar ${r.tone}`}>{r.initial}</span>
                     <div>
-                      <b>{r.name}{r.priority && <em className="priority">PRIORITAS</em>}</b>
-                      <small>Ibu: {r.mother} • NIK: {r.nik}</small>
+                      <b>{r.name}</b>
+                      <small>Wali: {r.mother} • NIK: {r.nik}</small>
                     </div>
                   </div>
                 </td>
                 <td>{r.age}<small>{r.gender}</small></td>
-                <td className={r.trend === 'flat' ? 'warn' : ''}>
-                  <b>{r.weight} kg <TrendMark trend={r.trend === 'alert' ? 'up' : r.trend} /></b>
-                  <small className={r.trend === 'flat' ? 'orange' : 'green'}>{r.weightDelta}</small>
-                </td>
-                <td className={r.trend === 'alert' ? 'bad' : ''}>
-                  <b>{r.height} cm <TrendMark trend={r.trend === 'flat' ? 'up' : r.trend} /></b>
-                  <small className={r.trend === 'alert' ? 'red' : 'green'}>{r.heightDelta}</small>
-                </td>
-                <td><span className={`pill dot ${STATUS_CLASS[r.status]}`}>{r.status}</span></td>
+                <td><b>{r.weight}</b></td>
+                <td><b>{r.height}</b>{r.heightForAge && <small>{r.heightForAge.indicator}: {r.heightForAge.status}</small>}</td>
+                <td><span className={`pill dot ${STATUS_CLASS[r.status] ?? "gray-pill"}`}>{r.status}</span>{r.weightForHeight && <small>{r.weightForHeight.indicator}: {r.weightForHeight.status}</small>}</td>
                 <td>{r.date}</td>
                 <td>
-                  {r.action === 'kms'
-                    ? <button className="action-pill blue">Lihat KMS <ChevronRight size={12} /></button>
-                    : <button className="action-pill orange"><Syringe size={12} /> Intervensi</button>}
+                  <button type="button" className="action-pill blue" onClick={() => openChart(r)}>Lihat KMS <ChevronRight size={12} /></button>
                 </td>
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={7} className="table-empty">Tidak ada data yang cocok.</td></tr>
+              <tr><td colSpan={7} className="table-empty">{message || 'Tidak ada data yang cocok.'}</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
       <div className="panel-foot">
-        <span>Menampilkan <b>{rows.length}</b> dari <b>{TOTAL_EXAMINED}</b> data balita terperiksa (Bulan November 2026)</span>
-        <Pagination variant="numbered" pages={2} prevLabel="Sebelumnya" nextLabel="Berikutnya" />
+        <span>Menampilkan <b>{rows.length}</b> dari <b>{reportRows.length}</b> data pemeriksaan</span>
+        <Pagination variant="numbered" pages={1} prevLabel="Sebelumnya" nextLabel="Berikutnya" />
       </div>
     </div>
   );
