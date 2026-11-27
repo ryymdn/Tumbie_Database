@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { CirclePlus } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import Pagination from '../../components/ui/Pagination.jsx';
@@ -28,15 +29,20 @@ function tableRow(child) {
 }
 
 export default function DataAnakPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const childId = searchParams.get('anak');
   const [children, setChildren] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [tableMessage, setTableMessage] = useState('Memuat data balita…');
 
   useEffect(() => {
     let active = true;
-    apiRequest('cadre/children', { token: sessionStorage.getItem(STORAGE_KEY) })
-      .then((rows) => {
+    const options = { token: sessionStorage.getItem(STORAGE_KEY) };
+    Promise.all([apiRequest('cadre/children', options), apiRequest('cadre/locations', options)])
+      .then(([rows, locations]) => {
         if (!active) return;
         setChildren(rows.map(tableRow));
+        setLocations(locations);
         setTableMessage('');
       })
       .catch((error) => { if (active) setTableMessage(error.message); });
@@ -46,6 +52,61 @@ export default function DataAnakPage() {
   const [statusFilter, setStatusFilter] = useState(ALL_STATUS);
   const formRef = useRef(null);
   const [verifyingId, setVerifyingId] = useState(null);
+  const editDialog = useRef(null);
+  const [draft, setDraft] = useState(null);
+  const [editError, setEditError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  const deleteChild = async (child) => {
+    if (deleting || verifyingId || !window.confirm('Hapus data ' + child.name + ' secara permanen?')) return;
+    setDeleting(true);
+    setNotice('');
+    try {
+      await apiRequest('cadre/children/' + child.id, { token: sessionStorage.getItem(STORAGE_KEY), method: 'DELETE' });
+      setChildren((list) => list.filter((item) => String(item.id) !== String(child.id)));
+      setNotice('Data anak dihapus.');
+    } catch (error) {
+      setNotice(error.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openEdit = ({ id, name, birthDate, gender }) => {
+    setDraft({ id, name, birthDate, gender });
+    setEditError('');
+    setNotice('');
+    editDialog.current?.showModal();
+  };
+
+  const setField = (key) => (event) => {
+    const value = event.target.value;
+    setDraft((current) => ({ ...current, [key]: value }));
+  };
+
+  const saveEdit = async (event) => {
+    event.preventDefault();
+    if (saving || !draft) return;
+    setSaving(true);
+    setEditError('');
+    try {
+      const { id, ...body } = draft;
+      const updated = await apiRequest('cadre/children/' + id, {
+        token: sessionStorage.getItem(STORAGE_KEY),
+        method: 'PATCH',
+        body,
+      });
+      setChildren((list) => list.map((item) => item.id === updated.id ? tableRow({ ...item, ...updated }) : item));
+      setNotice('Perubahan data anak tersimpan.');
+      editDialog.current?.close();
+    } catch (error) {
+      setEditError(error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const verifyChild = async (child) => {
     if (verifyingId || !window.confirm('Verifikasi data ' + child.name + '?')) return;
@@ -63,14 +124,13 @@ export default function DataAnakPage() {
     }
   };
 
-  const visible = children.filter((c) =>
-    (posFilter === ALL_POS || c.pos === posFilter) &&
-    (statusFilter === ALL_STATUS || c.status === statusFilter));
+  const visible = children.filter((c) => childId ? String(c.id) === childId : (
+    (posFilter === ALL_POS || String(c.posyanduId) === posFilter) &&
+    (statusFilter === ALL_STATUS || c.status === statusFilter)));
 
   const total = children.length;
-  const posOptions = [ALL_POS, ...new Set(children.map((child) => child.pos))];
   const verified = children.filter((child) => child.status === VERIFIED).length;
-  const totals = [total, verified, total - verified, posOptions.length - 1];
+  const totals = [total, verified, total - verified, new Set(children.map((child) => child.posyanduId)).size];
 
   const scrollToForm = () => {
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -82,7 +142,13 @@ export default function DataAnakPage() {
       token: sessionStorage.getItem(STORAGE_KEY),
       body: form,
     });
-    setChildren((list) => [tableRow(child), ...list]);
+    setChildren((list) => [tableRow(child), ...list.filter((item) => String(item.id) !== String(child.id))]);
+    setTableMessage('');
+    if (childId) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('anak');
+      setSearchParams(nextParams, { replace: true });
+    }
     setPosFilter(ALL_POS);
     setStatusFilter(ALL_STATUS);
   };
@@ -107,8 +173,11 @@ export default function DataAnakPage() {
             <p>Data rekapitulasi balita untuk penimbangan & imunisasi rutin</p>
           </div>
           <div className="table-filters">
-            <select className="select-sm" value={posFilter} onChange={(e) => setPosFilter(e.target.value)}>
-              {posOptions.map((opt) => <option key={opt}>{opt}</option>)}
+            <select aria-label="Filter Posyandu" className="select-sm" value={posFilter} onChange={(e) => setPosFilter(e.target.value)}>
+              <option value={ALL_POS}>{ALL_POS}</option>
+              {locations.map((location) => (
+                <option key={location.id} value={location.id}>{location.name}</option>
+              ))}
             </select>
             <select className="select-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               {STATUS_OPTIONS.map((opt) => <option key={opt}>{opt}</option>)}
@@ -116,7 +185,9 @@ export default function DataAnakPage() {
           </div>
         </div>
 
-        <PatientTable rows={visible} message={tableMessage} onVerify={verifyChild} verifyingId={verifyingId} />
+        {childId && <Link to="/data-anak">Tampilkan semua balita</Link>}
+        {notice && <p role="status">{notice}</p>}
+        <PatientTable rows={visible} message={tableMessage} onEdit={openEdit} onDelete={deleteChild} deleting={deleting} onVerify={verifyChild} verifyingId={verifyingId} />
 
         <div className="panel-foot">
           <span>Menampilkan <b>{visible.length}</b> dari <b>{total}</b> balita terdaftar</span>
@@ -124,6 +195,31 @@ export default function DataAnakPage() {
         </div>
       </div>
 
+      <dialog className="panel" ref={editDialog} aria-labelledby="edit-child-title"
+        onCancel={(event) => { if (saving) event.preventDefault(); }}>
+        <h3 id="edit-child-title">Edit Data Anak</h3>
+        {draft && (
+          <form onSubmit={saveEdit}>
+            <label className="fld">Nama Anak
+              <input value={draft.name} onChange={setField('name')} maxLength={150} required />
+            </label>
+            <label className="fld">Tanggal Lahir
+              <input type="date" value={draft.birthDate} onChange={setField('birthDate')} required />
+            </label>
+            <label className="fld">Jenis Kelamin
+              <select value={draft.gender} onChange={setField('gender')} required>
+                <option value="Laki-laki">Laki-laki</option>
+                <option value="Perempuan">Perempuan</option>
+              </select>
+            </label>
+            {editError && <p role="alert">{editError}</p>}
+            <div className="form-actions">
+              <button type="button" className="btn-text" disabled={saving} onClick={() => editDialog.current?.close()}>Batal</button>
+              <button type="submit" className="primary" disabled={saving}>{saving ? 'Menyimpan…' : 'Simpan Perubahan'}</button>
+            </div>
+          </form>
+        )}
+      </dialog>
       <ChildForm ref={formRef} onSave={addChild} />
     </>
   );

@@ -37,11 +37,15 @@ export default function SchedulePage() {
   const [message, setMessage] = useState('Memuat jadwal…');
   const [location, setLocation] = useState('');
   const [month, setMonth] = useState('');
-  const { selectedChild } = useParent();
+  const { kids, selectedChild, setSelectedId, refreshChildren } = useParent();
+  const [signupMessage, setSignupMessage] = useState('');
   const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta' }).format(new Date());
 
   useEffect(() => {
     let active = true;
+    refreshChildren().catch((error) => {
+      if (active) setSignupMessage(error.message);
+    });
     apiRequest('schedules', { token: sessionStorage.getItem(STORAGE_KEY) })
       .then((result) => {
         if (!active) return;
@@ -50,11 +54,11 @@ export default function SchedulePage() {
       })
       .catch((error) => { if (active) setMessage(error.message); });
     return () => { active = false; };
-  }, []);
+  }, [refreshChildren]);
 
   const defaultLocation = data.locations.find((item) => item.name === selectedChild?.posyandu) ?? data.locations[0];
-  const locationId = location || defaultLocation?.id || '';
-  const future = data.schedules.filter((item) => item.posyanduId === locationId && item.date >= today);
+  const locationId = location || String(defaultLocation?.id ?? '');
+  const future = data.schedules.filter((item) => String(item.posyanduId) === locationId && item.date >= today);
   const months = [...new Set(future.map((item) => item.date.slice(0, 7)))];
   const sessions = future.filter((item) => !month || item.date.startsWith(month)).map((item, index) => {
     const date = localDate(item.date);
@@ -73,6 +77,7 @@ export default function SchedulePage() {
   const join = async (session) => {
     if (joining || !selectedChild?.verified || session.posyandu !== selectedChild.posyandu) return;
     setJoining(true);
+    setSignupMessage('');
     try {
       const token = sessionStorage.getItem(STORAGE_KEY);
       const { queueCount } = await apiRequest('schedules/' + session.id + '/queue/' + selectedChild.id, { token, body: {} });
@@ -81,11 +86,12 @@ export default function SchedulePage() {
         schedules: current.schedules.map((item) => item.id === session.id ? {
           ...item,
           queueCount,
-          registeredChildIds: [...new Set([...item.registeredChildIds, selectedChild.id])],
+          registeredChildIds: [...new Set([...item.registeredChildIds, String(selectedChild.id)])],
         } : item),
       }));
+      setSignupMessage(selectedChild.name + ' berhasil didaftarkan.');
     } catch (error) {
-      window.alert(error.message);
+      setSignupMessage(error.message);
     } finally {
       setJoining(false);
     }
@@ -94,6 +100,14 @@ export default function SchedulePage() {
   return (
     <>
       <PageHeading title="Jadwal Posyandu" description="Informasi agenda penimbangan, imunisasi rutin, dan lokasi Posyandu terdekat.">
+        <SelectBox label="Pilih Anak" value={String(selectedChild?.id ?? '')}
+          options={kids.length ? kids : [{ id: '', name: 'Belum ada anak' }]}
+          onChange={(id) => {
+            setSelectedId(kids.find((kid) => String(kid.id) === id)?.id);
+            setLocation('');
+            setMonth('');
+            setSignupMessage('');
+          }} />
         <SelectBox label="Pilih Posyandu / Wilayah" value={locationId}
           options={data.locations.length ? data.locations.map((item) => ({ ...item, name: item.rw ? item.name + ' (RW ' + item.rw + ')' : item.name })) : [{ id: '', name: 'Belum ada wilayah' }]}
           onChange={(id) => { setLocation(id); setMonth(''); }} />
@@ -121,8 +135,18 @@ export default function SchedulePage() {
       <section className="region-panel">
         <h2>Daftar Jadwal Posyandu Wilayah</h2>
         <p className="region-sub">Pilih sesi penimbangan alternatif jika Anda berhalangan hadir pada tanggal utama.</p>
+        {signupMessage && <p role="status">{signupMessage}</p>}
+        {!selectedChild && <p>Tambahkan data anak terlebih dahulu untuk mendaftar.</p>}
+        {selectedChild && !selectedChild.verified && <p>Data {selectedChild.name} masih menunggu verifikasi kader.</p>}
+        {selectedChild?.verified && defaultLocation && locationId !== String(defaultLocation.id) && (
+          <p>Pilih jadwal di {selectedChild.posyandu} untuk mendaftarkan {selectedChild.name}.</p>
+        )}
+        {!message && sessions.length === 0 && <p>Belum ada jadwal mendatang di wilayah dan bulan yang dipilih.</p>}
         <div className="region-list">
-          {sessions.map((s) => (
+          {sessions.map((s) => {
+            const registered = s.registeredChildIds.includes(String(selectedChild?.id));
+            const full = s.quota != null && s.queueCount >= s.quota;
+            return (
             <article key={s.id} className={`region-item ${s.main ? 'main' : ''}`}>
               <div className="region-date">
                 <small>{s.month}</small><strong>{s.day}</strong><small>{s.weekday}</small>
@@ -139,13 +163,14 @@ export default function SchedulePage() {
                   <span className="quota">• Kuota: {s.quota ?? "—"}</span>
                 </div>
               </div>
-              <button type="button" className={`region-btn ${s.main ? 'filled' : ''} ${s.registeredChildIds.includes(selectedChild?.id) ? 'picked' : ''}`}
-                disabled={joining || !selectedChild?.verified || selectedChild.posyandu !== s.posyandu || s.registeredChildIds.includes(selectedChild.id)}
+              <button type="button" className={`region-btn ${s.main ? 'filled' : ''} ${registered ? 'picked' : ''}`}
+                disabled={joining || !selectedChild?.verified || selectedChild.posyandu !== s.posyandu || registered || full}
                 onClick={() => join(s)}>
-                {s.registeredChildIds.includes(selectedChild?.id) ? 'Sudah Terdaftar' : s.main ? 'Daftar Sesi Utama' : 'Daftar Sesi Alternatif'}
+                {registered ? 'Sudah Terdaftar' : full ? 'Kuota Penuh' : s.main ? 'Daftar Sesi Utama' : 'Daftar Sesi Alternatif'}
               </button>
             </article>
-          ))}
+            );
+          })}
         </div>
       </section>
 

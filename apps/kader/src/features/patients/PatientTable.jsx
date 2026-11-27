@@ -1,8 +1,8 @@
-import { Pencil, Phone } from 'lucide-react';
+import { CircleCheck, Pencil, Phone, Trash2 } from 'lucide-react';
 
 const COLUMNS = ['NAMA BALITA', 'TANGGAL LAHIR', 'JENIS KELAMIN', 'NAMA ORANG TUA', 'NO. HP', 'STATUS VERIFIKASI', 'AKSI'];
 
-export default function PatientTable({ rows, message, onVerify, verifyingId }) {
+export default function PatientTable({ rows, message, onEdit, onVerify, verifyingId, onDelete, deleting }) {
   return (
     <div className="table-wrap">
       <table className="data-table child-table">
@@ -29,7 +29,13 @@ export default function PatientTable({ rows, message, onVerify, verifyingId }) {
               <td>
                 <span className={`pill dot ${c.status === 'Terverifikasi' ? 'green-pill' : 'yellow-pill'}`}>{c.status}</span>
               </td>
-              <td><button className="icon-btn" type="button" title="Verifikasi data anak" aria-label={`Verifikasi ${c.name}`} disabled={Boolean(verifyingId) || c.status === 'Terverifikasi'} onClick={() => onVerify(c)}><Pencil size={15} /></button></td>
+              <td>
+                <button className="icon-btn" type="button" title="Edit data anak" aria-label={'Edit ' + c.name} onClick={() => onEdit(c)}><Pencil size={15} /></button>
+                <button className="icon-btn" type="button" title="Hapus data anak" aria-label={'Hapus ' + c.name} disabled={deleting || Boolean(verifyingId)} onClick={() => onDelete(c)}><Trash2 size={15} /></button>
+                {c.status !== 'Terverifikasi' && (
+                  <button className="icon-btn" type="button" title="Verifikasi data anak" aria-label={'Verifikasi ' + c.name} disabled={Boolean(verifyingId)} onClick={() => onVerify(c)}><CircleCheck size={15} /></button>
+                )}
+              </td>
             </tr>
           ))}
           {rows.length === 0 && (

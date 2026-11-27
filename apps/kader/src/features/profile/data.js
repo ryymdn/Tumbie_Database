@@ -1,9 +1,11 @@
 export const initialProfile = {
   name: '',
-  role: 'Kader Posyandu',
+  jobTitle: '',
   nik: '',
+  nip: '',
   phone: '',
   area: '',
+  areaLabel: '',
   puskesmas: '',
 };
 

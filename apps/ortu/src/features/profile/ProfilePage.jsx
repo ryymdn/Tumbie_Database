@@ -82,10 +82,6 @@ export default function ProfilePage() {
             <Info label="No. WhatsApp / HP Aktif" value={parent.phone} full />
             <Info label="Alamat Domisili Sesuai KK" value={parent.addressFull} full />
           </div>
-          <div className="region-box">
-            <small>Wilayah Posyandu Terdaftar</small>
-            <div><span><i />{parent.posyandu}</span><em>{parent.village}</em></div>
-          </div>
         </section>
 
         <section className="sand-card">

@@ -53,7 +53,7 @@ export default function AddChildPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const api = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/+$/, '');
+    const api = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
     fetch(`${api}/posyandu`, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error();

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { CirclePlus } from 'lucide-react';
 import StatCard from './StatCard.jsx';
 import EventCard from './EventCard.jsx';
@@ -20,9 +21,12 @@ const badges = {
 };
 
 export default function JadwalPage() {
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get('sesi');
   const [data, setData] = useState({ schedules: [], locations: [] });
   const [message, setMessage] = useState('Memuat jadwal…');
   const { schedules, locations } = data;
+  const visible = sessionId ? schedules.filter((session) => String(session.id) === sessionId) : schedules;
   const now = new Date();
   const month = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit' }).format(now);
   const monthName = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', year: 'numeric', month: 'long' }).format(now);
@@ -51,6 +55,35 @@ export default function JadwalPage() {
   const [queue, setQueue] = useState(null);
   const [queueMessage, setQueueMessage] = useState('');
   const [queuePending, setQueuePending] = useState(false);
+  const [retiring, setRetiring] = useState(false);
+
+  const retireSession = async (session) => {
+    const cancel = Boolean(session.queueCount || session.hasExaminations);
+    const question = cancel
+      ? 'Batalkan sesi "' + session.title + '"? Orang tua yang sudah mendaftar akan mendapat notifikasi.'
+      : 'Hapus sesi kosong "' + session.title + '"?';
+    if (retiring || !window.confirm(question)) return;
+    setRetiring(true);
+    try {
+      const result = await apiRequest('schedules/' + session.id + (cancel ? '/cancel' : ''), {
+        token: sessionStorage.getItem(STORAGE_KEY),
+        method: cancel ? 'POST' : 'DELETE',
+      });
+      setData((current) => ({
+        ...current,
+        schedules: cancel
+          ? current.schedules.map((item) => item.id === session.id ? { ...item, status: result.status } : item)
+          : current.schedules.filter((item) => item.id !== session.id),
+      }));
+      setEditing((current) => current?.id === session.id ? null : current);
+      setMessage(cancel ? 'Sesi dibatalkan.' : 'Sesi dihapus.');
+    } catch (error) {
+      setMessage(error.message);
+      try { setData(await request()); } catch {}
+    } finally {
+      setRetiring(false);
+    }
+  };
 
   const openQueue = async (session) => {
     setQueue({ session, rows: [] });
@@ -127,8 +160,10 @@ export default function JadwalPage() {
       </div>
 
       {message && <p role="status">{message}</p>}
-      {!message && !schedules.length && <p>Belum ada jadwal Posyandu.</p>}
-      {schedules.map((session) => <EventCard key={session.id} onQueue={() => openQueue(session)} onEdit={session.status === "upcoming" ? () => { setEditing(session); scrollToForm(); } : undefined} session={{
+      {sessionId && <Link to="/jadwal">Tampilkan semua jadwal</Link>}
+      {!message && !visible.length && <p>{sessionId ? "Jadwal tidak ditemukan." : "Belum ada jadwal Posyandu."}</p>}
+      {visible.map((session) => <EventCard key={session.id} onQueue={() => openQueue(session)}
+        retiring={retiring} onRetire={session.status === "upcoming" ? () => retireSession(session) : undefined} onEdit={session.status === "upcoming" ? () => { setEditing(session); scrollToForm(); } : undefined} session={{
         ...session,
         ...dateParts(session.date),
         badge: badges[session.status] ?? badges.upcoming,

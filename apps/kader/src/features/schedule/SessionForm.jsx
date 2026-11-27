@@ -7,27 +7,33 @@ const SessionForm = forwardRef(function SessionForm({ onSubmit, locations, month
   const initial = editing ? {
     name: editing.title, date: editing.date, time: editing.start + ' – ' + editing.end + ' WIB',
     place: editing.place, quota: String(editing.quota ?? ''), bidan: editing.midwife ?? '',
-    services: editing.services, kaders: editing.staff,
-  } : initialSessionForm;
+    services: editing.services, kaders: editing.staff, posyanduId: String(editing.posyanduId),
+  } : { ...initialSessionForm, posyanduId: '' };
   const [form, setForm] = useState(initial);
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
-  const name = form.name.trim().toLowerCase();
-  const location = editing ? locations.find((item) => item.id === editing.posyanduId) : locations.length === 1 ? locations[0] : locations
-    .filter((item) => name === item.name.toLowerCase() || name.startsWith(item.name.toLowerCase() + ' '))
-    .sort((a, b) => b.name.length - a.name.length)[0];
+  const locationId = form.posyanduId || (locations.length === 1 ? String(locations[0].id) : '');
+  const location = locations.find((item) => String(item.id) === locationId);
   const staff = location?.staff ?? [];
-  const selected = form.kaders.filter((id) => staff.some((item) => item.id === id));
+  const selected = form.kaders.map(String).filter((id) => staff.some((item) => String(item.id) === id));
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
   const toggleService = (item) => setForm((f) => ({
     ...f,
     services: f.services.includes(item) ? f.services.filter((x) => x !== item) : [...f.services, item],
   }));
-  const removeKader = (name) => setForm((f) => ({ ...f, kaders: f.kaders.filter((k) => k !== name) }));
-  const nextKader = staff.find((k) => !selected.includes(k.id));
-  const addKader = () => nextKader && setForm((f) => ({ ...f, kaders: [...selected, nextKader.id] }));
-  const reset = () => { setForm(initialSessionForm); setError(''); };
+  const changeLocation = (event) => {
+    const posyanduId = event.target.value;
+    setError('');
+    setForm((current) => ({ ...current, posyanduId, kaders: [] }));
+  };
+  const removeKader = (id) => setForm((f) => ({ ...f, kaders: f.kaders.filter((k) => String(k) !== String(id)) }));
+  const availableStaff = staff.filter((item) => !selected.includes(String(item.id)));
+  const addKader = (event) => {
+    const id = event.target.value;
+    if (id) setForm((current) => ({ ...current, kaders: [...new Set([...current.kaders.map(String), id])] }));
+  };
+  const reset = () => { setForm({ ...initialSessionForm, posyanduId: '' }); setError(''); };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -36,7 +42,7 @@ const SessionForm = forwardRef(function SessionForm({ onSubmit, locations, month
       return setError('Nama sesi, tanggal, dan lokasi kegiatan wajib diisi.');
     }
     if (!Number(form.quota)) return setError('Batas kuota harus berupa angka lebih dari 0.');
-    if (!location) return setError(locations.length ? 'Awali nama sesi dengan nama Posyandu wilayah tugas.' : 'Posyandu wilayah tugas belum tersedia.');
+    if (!location) return setError(locations.length ? 'Pilih Posyandu untuk sesi ini.' : 'Posyandu wilayah tugas belum tersedia.');
     setPending(true);
     setError('');
     try {
@@ -57,8 +63,16 @@ const SessionForm = forwardRef(function SessionForm({ onSubmit, locations, month
       </div>
 
       <label className="fld plain">
-        <span>Nama Sesi & Pos Posyandu</span>
-        <input name="sessionName" placeholder={locations.map((item) => item.name).join(" / ")} value={form.name} onChange={set('name')} />
+        <span>Nama Sesi</span>
+        <input name="sessionName" placeholder="Contoh: Penimbangan Bulanan" value={form.name} onChange={set('name')} />
+      </label>
+
+      <label className="fld plain">
+        <span>Posyandu</span>
+        <select className="select-sm" value={locationId} onChange={changeLocation} disabled={pending || !locations.length}>
+          <option value="">{locations.length ? 'Pilih Posyandu' : 'Posyandu belum tersedia'}</option>
+          {locations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select>
       </label>
 
       <div className="session-row">
@@ -114,13 +128,16 @@ const SessionForm = forwardRef(function SessionForm({ onSubmit, locations, month
       <div className="fld">
         <span>Kader Jaga Ditugaskan</span>
         <div className="kader-box">
-          {staff.filter((k) => selected.includes(k.id)).map((k) => (
+          {staff.filter((k) => selected.includes(String(k.id))).map((k) => (
             <span key={k.id} className="kader-chip">
               {k.name}
               <button type="button" aria-label={`Hapus ${k.name}`} onClick={() => removeKader(k.id)}><X size={10} /></button>
             </span>
           ))}
-          <button type="button" className="kader-add" onClick={addKader} disabled={!nextKader}>+ Tambah Kader</button>
+          <select aria-label="Tambah Kader" className="select-sm" value="" onChange={addKader} disabled={!availableStaff.length}>
+            <option value="">{!location ? 'Pilih Posyandu terlebih dahulu' : !staff.length ? 'Belum ada kader di Posyandu ini' : availableStaff.length ? '+ Tambah Kader' : 'Semua kader sudah dipilih'}</option>
+            {availableStaff.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
         </div>
       </div>
 

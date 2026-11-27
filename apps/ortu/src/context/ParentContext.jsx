@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { formatDate, initialsOf, nameFromIdentity, toComma } from '../data/format.js';
 import { apiRequest } from '../features/auth/authApi.js';
 import { STORAGE_KEY } from '../features/auth/useAuth.js';
@@ -40,6 +40,17 @@ export function ParentProvider({ children, onLogout, user }) {
   const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const childRequest = useRef(0);
+
+  const refreshChildren = useCallback(async () => {
+    const token = sessionStorage.getItem(STORAGE_KEY);
+    const revision = ++childRequest.current;
+    const rows = await apiRequest('children', { token });
+    if (revision === childRequest.current && token === sessionStorage.getItem(STORAGE_KEY)) {
+      setKids(rows.map(displayChild));
+      setError('');
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -47,12 +58,24 @@ export function ParentProvider({ children, onLogout, user }) {
     apiRequest('schedules', { token })
       .then(({ schedules }) => { if (active) setSchedules(schedules); })
       .catch(() => { if (active) setSchedules([]); });
-    apiRequest('children', { token })
-      .then((rows) => { if (active) setKids(rows.map(displayChild)); })
+    refreshChildren()
       .catch((error) => { if (active) setError(error.message); })
       .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, []);
+
+    const syncChildren = () => {
+      if (!document.hidden) refreshChildren().catch(() => {});
+    };
+    const timer = window.setInterval(syncChildren, 15000);
+    window.addEventListener('focus', syncChildren);
+    document.addEventListener('visibilitychange', syncChildren);
+    return () => {
+      active = false;
+      childRequest.current++;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', syncChildren);
+      document.removeEventListener('visibilitychange', syncChildren);
+    };
+  }, [refreshChildren]);
 
   const addChild = useCallback(async (form) => {
     const saved = await apiRequest('children', {
@@ -65,7 +88,8 @@ export function ParentProvider({ children, onLogout, user }) {
       },
     });
     const child = displayChild(saved);
-    setKids((list) => [...list, child]);
+    childRequest.current++;
+    setKids((list) => list.some((item) => item.id === child.id) ? list : [...list, child]);
     setSelectedId(child.id);
   }, []);
 
@@ -94,8 +118,9 @@ export function ParentProvider({ children, onLogout, user }) {
     nextScheduleText,
     setSelectedId,
     addChild,
+    refreshChildren,
     onLogout,
-  }), [parent, kids, selectedChild, nextScheduleText, addChild, onLogout]);
+  }), [parent, kids, selectedChild, nextScheduleText, addChild, refreshChildren, onLogout]);
 
   if (loading) return <p role="status">Memuat data anak…</p>;
   if (error) return <div><p role="alert">{error}</p><button onClick={() => window.location.reload()}>Coba Lagi</button> <button onClick={onLogout}>Keluar</button></div>;

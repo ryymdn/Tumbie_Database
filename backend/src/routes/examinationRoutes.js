@@ -159,4 +159,18 @@ router.patch("/:id/measurements", async (req, res) => {
   res.json({ success: true, data: updated });
 });
 
+router.delete("/:id", async (req, res) => {
+  const examId = req.params.id;
+  if (!/^[1-9][0-9]{0,17}$/.test(examId)) {
+    return res.status(400).json({ success: false, message: "ID pemeriksaan tidak valid." });
+  }
+  const { rows: [exam] } = await pool.query(`
+    DELETE FROM examinations e USING children c
+    WHERE e.id = $2 AND c.id = e.child_id AND ${scope}
+    RETURNING e.id
+  `, [req.user.sub, examId]);
+  if (!exam) return res.status(404).json({ success: false, message: "Pemeriksaan tidak ditemukan di wilayah tugas kader." });
+  res.json({ success: true, data: exam });
+});
+
 module.exports = router;

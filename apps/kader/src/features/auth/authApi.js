@@ -1,5 +1,5 @@
 export async function apiRequest(path, { body, token, method = body ? 'POST' : 'GET' } = {}) {
-  const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/+$/, '');
+  const baseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
   let response;
   try {
     response = await fetch(`${baseUrl}/${path}`, {

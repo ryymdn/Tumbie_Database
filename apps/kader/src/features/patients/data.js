@@ -30,10 +30,6 @@ export const emptyChildForm = {
   birth: '',
   gender: 'Perempuan',
   notes: '',
-  parent: '',
-  nik: '',
-  phone: '',
-  address: '',
 };
 
 const MONTHS_ID = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];

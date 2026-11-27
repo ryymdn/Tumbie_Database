@@ -1,10 +1,16 @@
 import { Clock, MapPin, UserRoundCog } from 'lucide-react';
 
-export default function EventCard({ session, onEdit, onQueue }) {
+export default function EventCard({ session, onEdit, onQueue, onRetire, retiring }) {
   const {
     featured, weekday, day, month, title, badge, time, place, quotaLabel, quota,
     serviceLabel, services, attendance, remaining, staff = [], staffCount, queueCount,
   } = session;
+
+  const action = onRetire && (
+    <button type="button" className="btn-sand" onClick={onRetire} disabled={retiring}>
+      {session.queueCount || session.hasExaminations ? 'Batalkan Sesi' : 'Hapus Sesi'}
+    </button>
+  );
 
   return (
     <article className={featured ? 'event-card featured' : 'event-card'}>
@@ -52,6 +58,7 @@ export default function EventCard({ session, onEdit, onQueue }) {
             </div>
             <div className="event-actions">
               <button type="button" className="btn-sand" onClick={onEdit} disabled={!onEdit}>Ubah Jadwal</button>
+              {action}
               <button type="button" className="primary" onClick={onQueue}><UserRoundCog size={14} /> Kelola Antrean ({queueCount})</button>
             </div>
           </div>
@@ -60,6 +67,7 @@ export default function EventCard({ session, onEdit, onQueue }) {
         <div className="service-chips">
           {services.map((s) => <span key={s}>{s}</span>)}
           {onEdit && <button type="button" className="btn-sand" onClick={onEdit}>Ubah Jadwal</button>}
+          {action}
           <button type="button" className="primary" onClick={onQueue}><UserRoundCog size={14} /> Kelola Antrean ({queueCount})</button>
         </div>
       )}

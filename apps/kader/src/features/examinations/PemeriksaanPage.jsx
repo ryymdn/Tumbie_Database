@@ -39,6 +39,8 @@ function tableRow(exam) {
 export default function PemeriksaanPage() {
   const [rows, setRows] = useState([]);
   const [children, setChildren] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [locationId, setLocationId] = useState('');
   const [immunizations, setImmunizations] = useState([]);
   const [pmtTypes, setPmtTypes] = useState([]);
   const [message, setMessage] = useState('');
@@ -46,10 +48,11 @@ export default function PemeriksaanPage() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([cadreRequest('children'), cadreRequest('examinations'), cadreRequest('examinations/immunization-types'), cadreRequest('examinations/pmt-types')])
-      .then(([children, exams, immunizations, pmtTypes]) => {
+    Promise.all([cadreRequest('children'), cadreRequest('examinations'), cadreRequest('examinations/immunization-types'), cadreRequest('examinations/pmt-types'), cadreRequest('locations')])
+      .then(([children, exams, immunizations, pmtTypes, locations]) => {
         if (!active) return;
         setChildren(children);
+        setLocations(locations);
         setImmunizations(immunizations);
         setPmtTypes(pmtTypes);
         setRows(exams.map(tableRow));
@@ -65,6 +68,28 @@ export default function PemeriksaanPage() {
   const [edit, setEdit] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  const deleteExam = async (row) => {
+    if (deleting || !window.confirm('Hapus pemeriksaan ' + row.name + ' tanggal ' + row.date + ' beserta catatan imunisasi dan PMT?')) return;
+    setDeleting(true);
+    try {
+      await apiRequest('cadre/examinations/' + row.id, {
+        token: sessionStorage.getItem(STORAGE_KEY), method: 'DELETE',
+      });
+      setRows((current) => current.filter((item) => String(item.id) !== String(row.id)));
+      try {
+        setRows((await cadreRequest('examinations')).map(tableRow));
+        setMessage('Pemeriksaan dihapus.');
+      } catch {
+        setMessage('Pemeriksaan dihapus. Muat ulang untuk memperbarui rekap.');
+      }
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const openEdit = (row) => {
     const value = (item) => item === '—' || item == null ? '' : String(item);
@@ -99,16 +124,19 @@ export default function PemeriksaanPage() {
   };
 
   const keyword = query.trim().toLowerCase();
-  const visible = rows.filter((r) =>
+  const scopedChildren = locationId ? children.filter((child) => String(child.posyanduId) === locationId) : children;
+  const scopedChildIds = new Set(scopedChildren.map((child) => String(child.id)));
+  const scopedRows = locationId ? rows.filter((row) => scopedChildIds.has(String(row.childId))) : rows;
+  const visible = scopedRows.filter((r) =>
     (!childId || r.childId === childId) && [r.name, r.mother, r.nik, ...r.service].some((text) => text.toLowerCase().includes(keyword)));
 
-  const todayRows = rows.filter((row) => row.date === today);
+  const todayRows = scopedRows.filter((row) => row.date === today);
   const total = new Set(todayRows.map((row) => row.childId)).size;
   const latestToday = new Map();
   for (const row of todayRows) if (!latestToday.has(row.childId)) latestToday.set(row.childId, row);
   const normal = [...latestToday.values()].filter((row) => row.status === 'Berat badan normal').length;
   const doses = todayRows.reduce((count, row) => count + row.vaccines.length, 0);
-  const verified = children.filter((child) => child.registrationStatus === 'verified');
+  const verified = scopedChildren.filter((child) => child.registrationStatus === 'verified');
 
   const scrollToForm = () => {
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -136,10 +164,14 @@ export default function PemeriksaanPage() {
   return (
     <>
       <PageHeader
-        tag={[...new Set(children.map((child) => child.posyandu))].join(", ") || "Wilayah Posyandu"}
+        tag={locations.find((location) => location.id === locationId)?.name || "Wilayah Posyandu"}
         meta={<span className="meta-date"><CalendarDays size={14} /> {new Intl.DateTimeFormat("id-ID", { dateStyle: "full", timeZone: "Asia/Jakarta" }).format(new Date())}</span>}
         title="Pemeriksaan Bayi, Balita dan Batita"
       >
+        <select aria-label="Filter Posyandu" className="select-sm" value={locationId} onChange={(event) => setLocationId(event.target.value)}>
+          <option value="">Semua Posyandu</option>
+          {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
+        </select>
         <button className="btn-dark" onClick={scrollToForm}><CirclePlus size={16} /> Input Pemeriksaan Baru</button>
       </PageHeader>
 
@@ -173,7 +205,7 @@ export default function PemeriksaanPage() {
         </div>
 
         {message && <p role="status">{message}</p>}
-        <ExaminationTable rows={visible} onEdit={openEdit} />
+        <ExaminationTable rows={visible} onEdit={openEdit} onDelete={deleteExam} deleting={deleting} />
 
         <div className="panel-foot">
           <span>Menampilkan <b>{visible.length}</b> dari <b>{rows.length}</b> hasil pemeriksaan</span>

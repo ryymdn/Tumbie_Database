@@ -6,6 +6,10 @@ import { initialProfile, initialPassword } from './data.js';
 import { apiRequest, authRequest } from '../auth/authApi.js';
 import { STORAGE_KEY } from '../auth/useAuth.js';
 
+function profileFields(profile) {
+  return { ...profile, phone: profile.phone ?? '', nik: profile.nik ?? '', nip: profile.nip ?? '', jobTitle: profile.jobTitle ?? '', areaLabel: profile.areaLabel ?? '', puskesmas: profile.puskesmas ?? '' };
+}
+
 function profileRequest(body) {
   return apiRequest('cadre/profile', {
     token: sessionStorage.getItem(STORAGE_KEY),
@@ -23,7 +27,7 @@ export default function ProfilPage({ onLogout }) {
     let active = true;
     profileRequest().then((account) => {
       if (!active) return;
-      const values = { ...initialProfile, ...account, phone: account.phone ?? '', area: account.areas.join(', ') };
+      const values = { ...initialProfile, ...profileFields(account), area: account.areas.join(', ') };
       setProfile(values);
       setSaved(values);
     }).catch((error) => { if (active) setMessage({ type: 'error', text: error.message }); });
@@ -54,8 +58,9 @@ export default function ProfilPage({ onLogout }) {
     }
     setPending(true);
     try {
-      const updated = await profileRequest({ name: profile.name, phone: profile.phone });
-      const values = { ...saved, ...updated, phone: updated.phone ?? '' };
+      const { name, phone, nik, nip, jobTitle, areaLabel, puskesmas } = profile;
+      const updated = await profileRequest({ name, phone, nik, nip, jobTitle, areaLabel, puskesmas });
+      const values = { ...saved, ...profileFields(updated) };
       setProfile(values);
       setSaved(values);
       if (changingPassword) {
@@ -118,14 +123,15 @@ export default function ProfilPage({ onLogout }) {
           </label>
           <label className="fld sand">
             <span>Peran / Jabatan</span>
-            <input value={profile.role} readOnly />
+            <input value={profile.jobTitle} onChange={setField('jobTitle')} placeholder="Kader Posyandu" maxLength={100} />
           </label>
           <label className="fld sand">
-            <span>NIK / NIP</span>
-            <div className="field-icon">
-              <input value={profile.nik} readOnly inputMode="numeric" />
-              <CircleCheck size={15} className="ok" />
-            </div>
+            <span>NIK</span>
+            <input value={profile.nik} onChange={setField('nik')} inputMode="numeric" maxLength={16} />
+          </label>
+          <label className="fld sand">
+            <span>NIP</span>
+            <input value={profile.nip} onChange={setField('nip')} inputMode="numeric" maxLength={18} />
           </label>
           <label className="fld sand">
             <span>Nomor WhatsApp Aktif</span>
@@ -137,11 +143,12 @@ export default function ProfilPage({ onLogout }) {
           </label>
           <label className="fld sand">
             <span>Wilayah Penugasan</span>
-            <input value={profile.area} readOnly />
+            <input value={profile.areaLabel} onChange={setField('areaLabel')} placeholder={profile.area} maxLength={150} />
+            <small>Wilayah akses akun: {profile.area || 'Belum ditetapkan'}</small>
           </label>
           <label className="fld sand">
             <span>Puskesmas Pembina</span>
-            <input value={profile.puskesmas} readOnly />
+            <input value={profile.puskesmas} onChange={setField('puskesmas')} maxLength={150} />
           </label>
         </div>
 

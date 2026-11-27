@@ -1,10 +1,10 @@
-import { SquarePen } from 'lucide-react';
+import { SquarePen, Trash2 } from 'lucide-react';
 
 const COLUMNS = ['NAMA BALITA', 'NAMA IBU & NIK', 'BB (KG) & ΔBB', 'TB (CM)', 'LK (CM)', 'STATUS BB/U', 'IMUNISASI / PMT', 'PETUGAS', 'AKSI'];
 
 const STATUS_CLASS = { 'Berat badan normal': 'teal-pill', 'Berat badan kurang': 'yellow-pill', 'Berat badan sangat kurang': 'red-pill', 'Risiko berat badan lebih': 'yellow-pill' };
 
-export default function ExaminationTable({ rows, onEdit }) {
+export default function ExaminationTable({ rows, onEdit, onDelete, deleting }) {
   return (
     <div className="table-wrap">
       <table className="data-table exam-table">
@@ -24,7 +24,9 @@ export default function ExaminationTable({ rows, onEdit }) {
                 {r.service.map((line) => <span key={line}>{line}</span>)}
               </td>
               <td className="officer">{r.officer}</td>
-              <td><button type="button" className="icon-btn sand" onClick={() => onEdit(r)} aria-label={`Ubah pemeriksaan ${r.name}`}><SquarePen size={14} /></button></td>
+              <td><button type="button" className="icon-btn sand" onClick={() => onEdit(r)} aria-label={`Ubah pemeriksaan ${r.name}`}><SquarePen size={14} /></button>
+                <button type="button" className="icon-btn sand" title="Hapus pemeriksaan" aria-label={'Hapus pemeriksaan ' + r.name} disabled={deleting} onClick={() => onDelete(r)}><Trash2 size={14} /></button>
+              </td>
             </tr>
           ))}
           {rows.length === 0 && (

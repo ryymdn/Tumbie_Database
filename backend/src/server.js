@@ -49,6 +49,7 @@ const authLimiter = rateLimit({
 });
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/children", require("./routes/childRoutes"));
+app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/schedules", require("./routes/scheduleRoutes"));
 app.use("/api/schedules", require("./routes/scheduleQueueRoutes"));
 app.use("/api/cadre/examinations", require("./routes/examinationRoutes"));
